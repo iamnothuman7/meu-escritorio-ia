@@ -470,3 +470,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 21px 0; }
 .auth-card h2 { font-size:25px; line-height:1.25; }
 .brand-name > span { font-size:20px; font-weight:450; margin-top:4px; letter-spacing:-.7px; }
 .brand-name em { font-style:normal; color:#8b5cf6; }
+.auth-mobile-logo{display:none}
+@media(max-width:760px){
+  .auth-mobile-logo{display:inline-flex;align-self:flex-start;margin-bottom:24px}
+  input,textarea,select{font-size:16px}
+  .install-compact span{display:none}
+  .mobile-nav{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .modal{max-height:calc(100dvh - 24px)}
+}
