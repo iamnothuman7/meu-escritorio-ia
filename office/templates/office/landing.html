@@ -1,0 +1,85 @@
+{% load static office_tags %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B1020">
+  <meta name="description" content="Conheça o NABIO Office AI: seu escritório de inteligência artificial, com agentes por área, empresas organizadas, tarefas rastreáveis e entregas para você aprovar.">
+  <title>NABIO Office AI · Sua visão. Uma equipe inteira para fazer acontecer.</title>
+  <link rel="icon" href="{% static 'office/brand/icon.svg' %}" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="{% static 'office/landing.css' %}">
+  <script defer src="{% static 'office/landing.js' %}"></script>
+  <script defer src="{% static 'office/pwa.js' %}"></script>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <header class="site-header">
+    <div class="nav-shell">
+      <a href="/" class="site-logo" aria-label="NABIO Office AI, início"><img src="{% static 'office/brand/logo-horizontal.svg' %}" width="195" height="60" alt="NABIO Office AI"></a>
+      <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="site-navigation" aria-label="Abrir navegação"><span></span><span></span><span></span></button>
+      <nav id="site-navigation" class="site-navigation" aria-label="Navegação principal">
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#equipe">A equipe</a>
+        <a href="#seu-jeito">Do seu jeito</a>
+        <a class="nav-login" href="{% if request.user.is_authenticated %}/app/{% else %}/login/{% endif %}">{% if request.user.is_authenticated %}Meu escritório{% else %}Entrar{% endif %} {% icon 'arrow' 16 %}</a>
+      </nav>
+    </div>
+  </header>
+  <main id="conteudo">
+    <section class="hero section-shell" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="tiny-star">✦</span> SEU ESCRITÓRIO DE INTELIGÊNCIA ARTIFICIAL</p>
+        <h1 id="hero-title">Sua visão.<br>Uma equipe inteira<br><span>para fazer acontecer.</span></h1>
+        <p class="hero-description">Transforme ideias em trabalho organizado. Uma equipe de agentes para cuidar do marketing, comercial, financeiro e projetos — com você no comando.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="{% if request.user.is_authenticated %}/app/{% else %}/login/{% endif %}">Acessar meu escritório {% icon 'arrow' 18 %}</a>
+          {% if whatsapp_url %}<a class="button secondary" href="{{ whatsapp_url }}" target="_blank" rel="noopener noreferrer">{% icon 'chat' 18 %} Conversar no WhatsApp</a>{% else %}<button class="button secondary" type="button" disabled title="Canal de WhatsApp em configuração">{% icon 'chat' 18 %} WhatsApp em breve</button>{% endif %}
+        </div>
+        <p class="hero-footnote">{% icon 'shield' 14 %} Sua direção. Seu contexto. Cada entrega sob sua revisão.</p>
+      </div>
+      <div class="hero-stage" aria-label="Ilustração do escritório e de seus agentes">
+        <div class="stage-orbit orbit-one"></div><div class="stage-orbit orbit-two"></div>
+        <span class="stage-spark spark-one">✦</span><span class="stage-spark spark-two">✦</span>
+        <div class="stage-caption"><span class="caption-line"></span> IDEIAS ENCONTRAM EXECUÇÃO</div>
+        <div class="agent-bubble atlas-bubble"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="{% static 'office/characters.svg' %}#avatar-0"></use></svg><div><strong>Atlas</strong><span>Organiza as prioridades</span></div></div>
+        <div class="agent-bubble luma-bubble"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="{% static 'office/characters.svg' %}#avatar-3"></use></svg><div><strong>Luma</strong><span>Dá forma às suas ideias</span></div></div>
+        <img class="office-scene" src="{% static 'office/office-scene.svg' %}" width="1000" height="360" alt="Escritório 2D com robôs, mesas, computadores e plantas">
+        <div class="stage-label"><span class="label-mark">N</span><div><strong>Uma equipe. Um só lugar.</strong><span>Planejar · produzir · revisar</span></div></div>
+        <p class="illustration-note">Ilustração da experiência</p>
+      </div>
+    </section>
+
+    <div class="areas-strip section-shell" aria-label="Áreas do escritório"><span>UM NOVO JEITO DE ORGANIZAR O TRABALHO</span><div><span>Coordenação</span><i>✦</i><span>Marketing</span><i>✦</i><span>Comercial</span><i>✦</i><span>Financeiro</span><i>✦</i><span>Projetos</span></div></div>
+
+    <section id="como-funciona" class="process-section section-shell section-space" aria-labelledby="process-title">
+      <div class="section-heading"><div><p class="eyebrow">MENOS ABAS. MAIS DIREÇÃO.</p><h2 id="process-title">Você pede.<br>O trabalho ganha caminho.</h2></div><p>Da demanda à entrega, tudo fica registrado. Você acompanha o que acontece e decide o que segue em frente.</p></div>
+      <div class="steps-grid">
+        <article class="step"><div class="step-top"><span class="step-number">01</span>{% icon 'chat' 25 %}</div><h3>Conte o que precisa</h3><p>Escreva em português, escolha a empresa e entregue o contexto certo ao agente responsável.</p><span class="step-example">“Luma, vamos planejar os posts da semana?”</span></article>
+        <article class="step"><div class="step-top"><span class="step-number">02</span>{% icon 'work' 25 %}</div><h3>Acompanhe a execução</h3><p>A demanda vira uma tarefa com responsável, histórico, estado real e resultado que você pode consultar.</p><span class="step-example">Uma tarefa identificada. Um caminho visível.</span></article>
+        <article class="step"><div class="step-top"><span class="step-number">03</span>{% icon 'approval' 25 %}</div><h3>Revise e aprove</h3><p>Confira a entrega, ajuste os detalhes e aprove a versão certa. A decisão continua nas suas mãos.</p><span class="step-example">Seu olhar fecha o ciclo.</span></article>
+      </div>
+    </section>
+
+    <section id="equipe" class="team-section section-space" aria-labelledby="team-title"><div class="section-shell">
+      <div class="section-heading centered"><p class="eyebrow">CONHEÇA QUEM VAI TRABALHAR COM VOCÊ</p><h2 id="team-title">Cada missão,<br><span class="gradient-text">o agente certo.</span></h2><p>Especialidades que se complementam. Um escritório que transforma demandas em entregas para revisão.</p></div>
+      <div class="team-grid">
+        {% for agent in team_preview %}<article class="team-card"><div class="robot-display"><span class="robot-halo"></span><svg viewBox="0 0 64 64" role="img" aria-label="Robô {{ agent.name }}"><use href="{% static 'office/characters.svg' %}#avatar-{{ agent.avatar }}"></use></svg></div><div class="team-card-copy"><span class="agent-area">{{ agent.role }}</span><h3>{{ agent.name }}</h3><p>{% if agent.name == 'Atlas' %}Organiza as prioridades, resume o dia e ajuda a transformar pedidos em próximos passos.{% elif agent.name == 'Radar' %}Qualifica as oportunidades cadastradas, organiza evidências e sinaliza o que falta conferir.{% elif agent.name == 'Elo' %}Prepara abordagens e propostas a partir dos contatos, serviços e condições aprovados.{% elif agent.name == 'Luma' %}Cria pautas, legendas, roteiros e briefings com o contexto da marca certa.{% elif agent.name == 'Cora' %}Confere os registros, os vencimentos e o fluxo financeiro, com cálculos rastreáveis.{% elif agent.name == 'Nexo' %}Estrutura projetos, acompanha tarefas e deixa os bloqueios e as entregas visíveis.{% endif %}</p></div><div class="team-card-footer">{% icon 'arrow' 15 %}<span>{% if agent.name == 'Atlas' %}Clareza para decidir{% elif agent.name == 'Radar' %}Contexto para prospectar{% elif agent.name == 'Elo' %}Conversas bem preparadas{% elif agent.name == 'Luma' %}Conteúdo com direção{% elif agent.name == 'Cora' %}Números organizados{% else %}Execução com propósito{% endif %}</span></div></article>{% endfor %}
+      </div>
+      <p class="section-note">Os personagens representam funções do escritório. Recursos de geração dependem de um provedor de IA configurado e autorizado.</p>
+    </div></section>
+
+    <section id="seu-jeito" class="custom-section section-shell section-space" aria-labelledby="custom-title">
+      <div class="custom-visual" aria-hidden="true"><div class="workspace-preview"><div class="preview-top"><span class="preview-dots"><i></i><i></i><i></i></span><span>SEUS ESPAÇOS DE TRABALHO</span></div><div class="workspace-example selected"><span class="company-mark purple">A</span><div><strong>Sua empresa</strong><small>Contexto, marca e equipe próprios</small></div>{% icon 'check' 18 %}</div><div class="workspace-example"><span class="company-mark cyan">B</span><div><strong>Seu próximo negócio</strong><small>Um novo espaço. A mesma base.</small></div>{% icon 'grid' 18 %}</div><div class="preview-separator"></div><div class="preview-tags"><span>Identidade</span><span>Tom de voz</span><span>Agentes</span><span>Rotinas</span></div><div class="preview-security">{% icon 'shield' 16 %} Cada empresa com seus próprios registros</div></div><span class="visual-orbit"></span></div>
+      <div class="custom-copy"><p class="eyebrow">UMA BASE. AS SUAS POSSIBILIDADES.</p><h2 id="custom-title">O escritório é seu.<br>Deixe com <span class="gradient-text">a sua cara.</span></h2><p>Use o Nabi Office em diferentes empresas e projetos. Personalize a identidade, o contexto e a equipe sem começar tudo de novo.</p><ul class="feature-list"><li>{% icon 'check' 17 %}<div><strong>Empresas organizadas</strong><span>Tarefas, entregas, oportunidades e registros separados por espaço.</span></div></li><li>{% icon 'check' 17 %}<div><strong>Equipe que acompanha seu negócio</strong><span>Ajuste missões, instruções e perfis, incluindo front-end e back-end.</span></div></li><li>{% icon 'check' 17 %}<div><strong>Autonomia com revisão</strong><span>Configure rotinas internas e preserve a aprovação das entregas.</span></div></li></ul></div>
+    </section>
+
+    <section class="routine-section section-shell" aria-labelledby="routine-title"><div class="routine-banner"><div class="routine-icon">{% icon 'clock' 27 %}</div><div class="routine-copy"><p class="eyebrow">O TRABALHO CONTINUA ORGANIZADO</p><h2 id="routine-title">Rotinas para o dia.<br>Entregas para o seu olhar.</h2><p>Com IA autorizada, você pode configurar a produção recorrente de pautas e legendas. Os rascunhos ficam aguardando revisão. No servidor, as rotinas podem executar com o navegador fechado, enquanto o serviço estiver ativo.</p></div><div class="routine-detail"><span>Exemplo de fluxo</span><strong>Briefing da marca</strong><span class="flow-line"></span><strong>Rascunho de conteúdo</strong><span class="flow-line"></span><strong class="review-step">Sua aprovação {% icon 'check' 16 %}</strong></div></div><p class="section-note">Publicação e programação automática no Instagram são integrações futuras. Hoje, a revisão e a publicação manual mantêm você no controle.</p></section>
+
+    <section id="duvidas" class="faq-section section-shell section-space" aria-labelledby="faq-title"><div class="faq-heading"><p class="eyebrow">ANTES DE COMEÇAR</p><h2 id="faq-title">Tudo às claras.</h2><p>Uma boa equipe começa com expectativas bem alinhadas.</p><button class="button secondary install-button" type="button" data-install hidden>{% icon 'download' 17 %} Instalar Nabi Office</button></div><div class="faq-list"><details><summary>Preciso conectar uma inteligência artificial?<span>+</span></summary><p>Você pode começar organizando tarefas, projetos e registros sem IA. Para gerar conteúdos, é necessário configurar e autorizar um provedor compatível. A assinatura do ChatGPT não conecta automaticamente a sua conta ao escritório: o uso do plano depende de uma integração oficial elegível. As conexões disponíveis e suas pendências aparecem nas configurações.</p></details><details><summary>Posso usar para mais de uma empresa?<span>+</span></summary><p>Sim. Cada espaço tem seu contexto, identidade, agentes e registros. Ao trocar de empresa, você trabalha com os dados daquele espaço. Cadastre apenas informações e materiais autorizados para cada negócio.</p></details><details><summary>Funciona no computador e no celular?<span>+</span></summary><p>A interface se adapta ao computador, tablet e celular. Em navegadores compatíveis, você pode instalar o Nabi Office como aplicativo pela opção de instalação ou por “Adicionar à tela inicial”. A instalação oferece um atalho para o escritório; o acesso aos dados e às execuções continua dependendo da conexão com o servidor.</p></details><details><summary>Os agentes trabalham com o navegador fechado?<span>+</span></summary><p>Na instalação em servidor, o executor pode manter as rotinas ativas mesmo com o navegador fechado. O servidor, o serviço de execução e a conexão de IA precisam estar disponíveis. As rotinas são configuradas e ativadas individualmente; um agente não envia mensagens nem publica conteúdo só por aparecer na equipe.</p></details></div></section>
+
+    <section class="closing-section section-shell"><div class="closing-spark">✦</div><p class="eyebrow">SUA PRÓXIMA IDEIA JÁ TEM ONDE COMEÇAR</p><h2>Mais espaço para pensar.<br><span class="gradient-text">Uma equipe para realizar.</span></h2><p>Entre no seu escritório e dê direção ao que vem a seguir.</p><a class="button primary" href="{% if request.user.is_authenticated %}/app/{% else %}/login/{% endif %}">Acessar meu escritório {% icon 'arrow' 18 %}</a></section>
+  </main>
+  <footer class="site-footer section-shell"><a class="site-logo" href="/" aria-label="NABIO Office AI, início"><img src="{% static 'office/brand/logo-horizontal.svg' %}" width="173" height="53" alt="NABIO Office AI"></a><p>Inteligência com propósito.<br><span>Seu escritório. Suas decisões.</span></p><div><a href="{% if request.user.is_authenticated %}/app/{% else %}/login/{% endif %}">Entrar no escritório {% icon 'arrow' 15 %}</a><small>© {% now 'Y' %} NABIO Office AI</small></div></footer>
+</body>
+</html>

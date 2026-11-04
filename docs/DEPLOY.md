@@ -23,3 +23,5 @@ O certificado usa ACME webroot exclusivo, sem plugin que reescreve configuraçõ
 Diagnóstico: `systemctl status nabi-office nabi-office-worker`, `journalctl -u nabi-office -u nabi-office-worker --since today`. Não publicar o ambiente nem tokens. Backups completos incluem todos os espaços e registros; proteger o arquivo como dado privado.
 
 IA ainda requer credencial e homologação com a conta do proprietário. Não foram importadas chaves dos outros projetos. Instagram, Google, Telegram e login de inferência ChatGPT não são apresentados como conectados.
+
+Backup automático diário às 01:00 de Fortaleza por `nabi-office-backup.timer`, com pacote consistente no diretório privado de dados. O backup completo exige administrador na interface e inclui hashes de autenticação; o ambiente e as chaves de provedores ficam fora dele. Não há expurgo automático dos backups; conferir espaço em disco periodicamente.

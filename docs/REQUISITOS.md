@@ -1,6 +1,6 @@
 # Rastreabilidade da primeira implementação
 
-A referência de produto é o PDF fornecido pelo usuário, versão de 4 de novembro de 2026. O nome solicitado no pedido mais recente é **Nabi Office**. A arquitetura local foi preservada; a identidade é provisória até o recebimento e aprovação da logo.
+A referência de produto é o PDF fornecido pelo usuário, versão de 4 de novembro de 2026. O nome solicitado no pedido mais recente é **Nabi Office**. A arquitetura local foi preservada e ganhou implantação dedicada no VPS a pedido posterior do proprietário. A identidade usa o manual NABIO Office AI fornecido: navy, roxo e ciano, Montserrat e Inter locais, robôs pixel e variações vetoriais da marca.
 
 | Área | Implementação e limite |
 | --- | --- |
@@ -19,6 +19,6 @@ A referência de produto é o PDF fornecido pelo usuário, versão de 4 de novem
 
 ## Pendências explícitas
 
-O fluxo OAuth oficial de uso do plano ChatGPT/Pro, conectores Google/Instagram/Telegram/Notion/GitHub, importação CSV com prévia e deduplicação completa, anexos de evidências com autorização e publicação externa com outbox não estão homologados nesta fundação. Não há promessa de saldo consultado em tempo real, operação com computador desligado ou acesso automático às conversas do ChatGPT.
+O fluxo OAuth oficial de uso do plano ChatGPT/Pro, conectores Google/Instagram/Telegram/Notion/GitHub, importação CSV com prévia e deduplicação completa, anexos de evidências com autorização e publicação externa com outbox não estão homologados nesta fundação. Não há promessa de saldo consultado em tempo real ou acesso automático às conversas do ChatGPT. O modo local depende do computador ligado; o modo hospedado executa no VPS enquanto ele e o serviço estiverem ativos.
 
 A cobertura de testes acompanha o código presente; a existência do checklist de aceitação no PDF não equivale a todos os seus cenários passarem nesta primeira versão. O relatório de entrega deve informar a execução efetiva e as limitações observadas.

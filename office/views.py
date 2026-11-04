@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from xml.sax.saxutils import escape
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -29,6 +30,33 @@ from . import services
 
 def health(request):
     return JsonResponse({'status': 'ok', 'product': 'Nabi Office'})
+
+
+def landing(request):
+    message='Olá! Conheci o NABIO Office AI e gostaria de saber como posso usar esse escritório de inteligência artificial na minha empresa. Pode me explicar como funciona?'
+    team=[{'name':name,'role':role,'avatar':i} for i,(name,role) in enumerate([('Atlas','Gestão e coordenação'),('Radar','Prospecção e pesquisa'),('Elo','Comercial e propostas'),('Luma','Marketing e conteúdo'),('Cora','Financeiro e análise'),('Nexo','Projetos e operações')])]
+    return render(request,'office/landing.html',{'whatsapp_url':'https://wa.me/5588992745456?'+urlencode({'text':message}),'team_preview':team})
+
+
+def webmanifest(request):
+    response=JsonResponse({'id':'/','name':'NABIO Office AI','short_name':'NABIO Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':'/app/','scope':'/','display':'standalone','background_color':'#0B1020','theme_color':'#0B1020','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
+    return response
+
+
+def service_worker(request):
+    path=settings.BASE_DIR/'office/static/office/sw.js'
+    response=HttpResponse(path.read_text(encoding='utf-8'),content_type='application/javascript')
+    response['Cache-Control']='no-cache'
+    response['Service-Worker-Allowed']='/'
+    return response
+
+
+def offline_page(request):
+    return render(request,'office/offline.html')
+
+
+def favicon(request):
+    return FileResponse(open(settings.BASE_DIR/'office/static/office/brand/favicon.ico','rb'),content_type='image/x-icon')
 
 
 def setup(request):
@@ -60,7 +88,7 @@ def setup(request):
                 workspace = services.bootstrap_workspace(user, name='Nabi Office')
                 request.session['workspace_id'] = str(workspace.pk)
             login(request, user)
-            return redirect('/')
+            return redirect('/app/')
         except ValidationError as exc:
             error = ' '.join(exc.messages)
     return render(request, 'office/auth.html', {'setup': True, 'error': error, 'hosted':os.environ.get('NABI_HTTPS')=='1'})
@@ -68,8 +96,6 @@ def setup(request):
 
 def login_route(request):
     from django.contrib.auth.views import LoginView
-    if not get_user_model().objects.exists():
-        return redirect('/setup/')
     return LoginView.as_view(template_name='office/auth.html',extra_context={'hosted':os.environ.get('NABI_HTTPS')=='1'})(request)
 
 
@@ -433,7 +459,7 @@ def settings_action(request):
 def switch_workspace(request):
     w=get_object_or_404(Workspace,pk=request.POST.get('workspace'),owner=request.user)
     request.session['workspace_id']=str(w.pk)
-    return redirect('/')
+    return redirect('/app/')
 
 
 @login_required
@@ -443,7 +469,7 @@ def pause(request):
     state.paused=not state.paused
     state.save()
     record_event(active_workspace(request),'office.paused' if state.paused else 'office.resumed','Escritório pausado.' if state.paused else 'Escritório retomado.')
-    return redirect(request.POST.get('return_to') if request.POST.get('return_to') in ['/','/tasks/','/settings/'] else '/')
+    return redirect(request.POST.get('return_to') if request.POST.get('return_to') in ['/app/','/tasks/','/settings/'] else '/app/')
 
 
 @login_required

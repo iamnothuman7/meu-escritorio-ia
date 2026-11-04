@@ -5,6 +5,7 @@ import tempfile
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.staticfiles import finders
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
@@ -30,14 +31,14 @@ class OnboardingTests(TestCase):
         response = self.client.post('/setup/', {
             'username': 'emmanuel', 'name': 'Emmanuel', 'password': 'Nabi-Local-2026!Ax7',
         })
-        self.assertRedirects(response, '/', fetch_redirect_response=False)
+        self.assertRedirects(response, '/app/', fetch_redirect_response=False)
         user = get_user_model().objects.get(username='emmanuel')
         self.assertTrue(user.check_password('Nabi-Local-2026!Ax7'))
         self.assertTrue(user.is_staff)
         self.assertNotEqual(user.password, 'Nabi-Local-2026!Ax7')
         self.assertEqual(Workspace.objects.filter(owner=user).count(), 1)
         self.assertEqual(str(user.pk), self.client.session['_auth_user_id'])
-        self.assertEqual(self.client.get('/').status_code, 200)
+        self.assertEqual(self.client.get('/app/').status_code, 200)
         self.assertRedirects(self.client.get('/setup/'), '/login/', fetch_redirect_response=False)
 
     def test_weak_password_does_not_create_account(self):
@@ -47,7 +48,7 @@ class OnboardingTests(TestCase):
 
     def test_hosted_setup_without_configuration_token_fails_closed(self):
         with patch.dict(os.environ, {'NABI_SETUP_TOKEN': '', 'NABI_HTTPS': '1'}):
-            self.assertRedirects(self.client.get('/login/'), '/setup/', fetch_redirect_response=False)
+            self.assertEqual(self.client.get('/login/').status_code, 200)
             self.assertEqual(self.client.get('/setup/').status_code, 403)
             self.assertEqual(self.client.post('/setup/', {
                 'username': 'intruder', 'password': 'Disallowed-bootstrap-7Nk!',
@@ -57,7 +58,7 @@ class OnboardingTests(TestCase):
     def test_hosted_setup_requires_token_then_removes_it_from_url(self):
         secret = 'test-only-owner-setup-token-7kS9'
         with patch.dict(os.environ, {'NABI_SETUP_TOKEN': secret}):
-            self.assertRedirects(self.client.get('/login/'), '/setup/', fetch_redirect_response=False)
+            self.assertEqual(self.client.get('/login/').status_code, 200)
             self.assertEqual(self.client.get('/setup/').status_code, 403)
             self.assertEqual(self.client.get('/setup/?token=wrong').status_code, 403)
             self.assertEqual(self.client.get('/setup/', {'token': 'não-é-o-token'}).status_code, 403)
@@ -73,7 +74,7 @@ class OnboardingTests(TestCase):
             response = self.client.post('/setup/', {
                 'username': 'authorized-owner', 'password': 'Velvet-Marble-7nK!2026',
             })
-            self.assertRedirects(response, '/', fetch_redirect_response=False)
+            self.assertRedirects(response, '/app/', fetch_redirect_response=False)
             owner = get_user_model().objects.get(username='authorized-owner')
             self.assertTrue(owner.is_staff)
             visitor = Client()
@@ -119,7 +120,7 @@ class OfficeWebTests(TestCase):
     def test_anonymous_requests_cannot_read_or_modify_data(self):
         visitor = Client()
         self.assertEqual(visitor.get('/login/').status_code, 200)
-        for path in ['/', '/team/', '/tasks/', '/approvals/', '/work/', '/settings/', '/export/', '/api/v1/dashboard']:
+        for path in ['/app/', '/team/', '/tasks/', '/approvals/', '/work/', '/settings/', '/export/', '/api/v1/dashboard']:
             with self.subTest(path=path):
                 response = visitor.get(path)
                 self.assertEqual(response.status_code, 302)
@@ -127,6 +128,14 @@ class OfficeWebTests(TestCase):
         for path in ['/tasks/create/', '/work/action/', '/settings/save/', '/office/pause/', '/backup/']:
             with self.subTest(path=path):
                 self.assertEqual(visitor.post(path, {}).status_code, 302)
+
+    def test_login_uses_private_app_and_rejects_external_next_url(self):
+        for next_url in ['', 'https://malicious.invalid/']:
+            visitor = Client()
+            response = visitor.post('/login/', {
+                'username': 'owner', 'password': 'Local-office-test7!', 'next': next_url,
+            })
+            self.assertRedirects(response, '/app/', fetch_redirect_response=False)
 
     def test_session_tampering_falls_back_to_owned_workspace(self):
         self.select_workspace(self.foreign)
@@ -302,7 +311,7 @@ class OfficeWebTests(TestCase):
     def test_pause_return_to_cannot_redirect_to_untrusted_url(self):
         for destination in ['https://malicious.invalid', '//malicious.invalid', '/\\malicious.invalid', '/tasks/?next=evil']:
             response = self.client.post('/office/pause/', {'return_to': destination})
-            self.assertRedirects(response, '/', fetch_redirect_response=False)
+            self.assertRedirects(response, '/app/', fetch_redirect_response=False)
         response = self.client.post('/office/pause/', {'return_to': '/tasks/'})
         self.assertRedirects(response, '/tasks/', fetch_redirect_response=False)
 
@@ -348,3 +357,51 @@ class OfficeWebTests(TestCase):
             'source_url': 'https://example.com/empresa',
         })
         self.assertEqual(Lead.objects.get(workspace=self.workspace, company='Fonte informada').source_url, 'https://example.com/empresa')
+
+    def test_public_landing_does_not_expose_authenticated_company_context(self):
+        Task.objects.create(workspace=self.workspace, title='Tarefa confidencial A', objective='Restrito')
+        visitor = Client()
+        for client in [visitor, self.client]:
+            with self.subTest(authenticated=client is self.client):
+                response = client.get('/')
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'Nabi Office')
+                self.assertContains(response, 'href="/app/"' if client is self.client else 'href="/login/"')
+                self.assertNotContains(response, '/setup/')
+                self.assertNotContains(response, 'Empresa A')
+                self.assertNotContains(response, 'Empresa B')
+                self.assertNotContains(response, 'Empresa alheia secreta')
+                self.assertNotContains(response, 'Tarefa confidencial A')
+
+
+class PublicSurfaceTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_landing_and_login_are_public_before_owner_setup(self):
+        with patch.dict(os.environ, {'NABI_SETUP_TOKEN': 'private-test-token', 'NABI_HTTPS': '1'}):
+            landing = self.client.get('/')
+            self.assertEqual(landing.status_code, 200)
+            self.assertContains(landing, 'href="/login/"')
+            self.assertNotContains(landing, 'private-test-token')
+            self.assertNotContains(landing, '/setup/')
+            login = self.client.get('/login/')
+            self.assertEqual(login.status_code, 200)
+            self.assertContains(login, 'name="username"')
+            self.assertContains(login, 'name="password"')
+            self.assertNotContains(login, '/setup/')
+            self.assertRedirects(self.client.get('/app/'), '/login/?next=/app/', fetch_redirect_response=False)
+            response = self.client.post('/login/', {'username': 'not-created', 'password': 'Not-an-account-9!A'})
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(get_user_model().objects.exists())
+
+    def test_installation_assets_are_public_and_icons_exist(self):
+        manifest = self.client.get('/manifest.webmanifest')
+        self.assertEqual(manifest.status_code, 200)
+        data = manifest.json()
+        self.assertTrue(data['icons'])
+        for icon in data['icons']:
+            self.assertTrue(icon['src'].startswith('/static/'))
+            self.assertIsNotNone(finders.find(icon['src'].removeprefix('/static/')))
+        service_worker = self.client.get('/sw.js')
+        self.assertEqual(service_worker.status_code, 200)

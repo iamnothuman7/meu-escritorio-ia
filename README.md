@@ -54,3 +54,11 @@ Rotinas iniciam desativadas. O computador e o executor precisam permanecer ligad
 ```
 
 Veja [operação e restauração](docs/OPERACAO.md) e [requisitos implementados e pendências](docs/REQUISITOS.md).
+
+## Entrada pública e aplicativo web
+
+A apresentação pública está em `/`, o login em `/login/` e o escritório protegido em `/app/`. O WhatsApp de atendimento é +55 88 99274-5456, com mensagem pré-preenchida. Logo e ícones vetoriais têm fundo transparente, e Inter/Montserrat são servidas localmente.
+
+O manifesto e service worker preparam instalação PWA em navegadores compatíveis. Use a opção de instalar/adicionar à tela inicial do navegador. A interface funciona em tela independente, mas tarefas e alterações continuam exigindo conexão com o servidor. Somente arquivos públicos e a página offline genérica são armazenados no cache; páginas privadas e APIs não são cacheadas.
+
+Na instalação local sem usuário, abra `/setup/` uma vez para criar o administrador. Na hospedagem, a configuração do primeiro administrador é autorizada por link de ativação da instalação; a página pública e o login nunca redirecionam para esse setup.

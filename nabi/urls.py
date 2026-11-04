@@ -6,8 +6,11 @@ from office import views
 
 urlpatterns = [
     path('health',views.health),path('setup/',views.setup),
-    path('login/',views.login_route),path('logout/',auth.LogoutView.as_view(next_page='/login/')),
-    path('',views.dashboard),path('team/',views.team),path('tasks/',views.tasks),path('tasks/create/',views.create_task),
+    path('login/',views.login_route),path('logout/',auth.LogoutView.as_view(next_page='/')),
+    path('',views.landing),path('app/',views.dashboard),
+    path('manifest.webmanifest',views.webmanifest),path('sw.js',views.service_worker),path('offline/',views.offline_page),
+    path('favicon.ico',views.favicon),
+    path('team/',views.team),path('tasks/',views.tasks),path('tasks/create/',views.create_task),
     path('tasks/<int:pk>/',views.task_detail),path('tasks/<int:pk>/action/',views.task_action),
     path('approvals/',views.approvals),path('approvals/<int:pk>/decision/',views.decision),
     path('deliveries/<int:pk>/edit/',views.edit_delivery),path('deliveries/<int:pk>/download/',views.download_delivery),path('deliveries/<int:pk>/art/',views.post_art),
