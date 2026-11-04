@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 360" role="img" aria-labelledby="scene-title scene-desc">
+  <title id="scene-title">O escritório Nabi</title>
+  <desc id="scene-desc">Ilustração decorativa de um escritório em estilo pixel, com mesas, plantas e uma equipe. A cena não representa atividade de execução.</desc>
+  <defs>
+    <pattern id="tiles" width="64" height="32" patternUnits="userSpaceOnUse">
+      <path d="M0 16 32 0 64 16 32 32Z" fill="none" stroke="#2b3d5a" stroke-width=".8"/>
+    </pattern>
+    <clipPath id="floor-clip"><path d="m108 191 435-142 374 137-435 148Z"/></clipPath>
+    <g id="plant" shape-rendering="crispEdges">
+      <path d="m0 47 18-6 19 6-18 7Z" fill="#152f35" opacity=".1"/>
+      <path d="M11 30h17v17H11zM14 47h11v4H14z" fill="#493365"/>
+      <path d="M12 31h15v4H12z" fill="#332b52"/>
+      <path d="M18 7h4v25h-4zM10 12h8v6h-8zM4 5h9v11H4zM22 16h10v6H22zM28 8h7v12h-7zM12 21h7v7h-7zM6 16h9v8H6zM21 1h8v10h-8z" fill="#217260"/>
+      <path d="M17 3h6v12h-6zM7 8h6v5H7zM25 15h8v5h-8z" fill="#329a7d"/>
+    </g>
+    <g id="desk" shape-rendering="crispEdges">
+      <path d="m1 54 84-28 94 34-85 28Z" fill="#203d43" opacity=".12"/>
+      <path d="M15 39h7v35h-7zM153 42h7v31h-7zM88 63h7v26h-7z" fill="#243756"/>
+      <path d="m0 32 85-27 91 31-85 29Z" fill="#344362"/>
+      <path d="m0 32 91 33v8L0 40Z" fill="#23304c"/>
+      <path d="m91 65 85-29v8L91 73Z" fill="#1f2942"/>
+      <path d="m66 16 17-5 5 2-17 6Z" fill="#5c6a8f" opacity=".5"/>
+      <path d="M68 0h5v32h-5zM75 26h12v5H75z" fill="#6f80a2"/>
+      <path d="m45-22 55 19v37L45 15Z" fill="#10192a"/>
+      <path d="m49-16 47 16v27L49 11Z" fill="#284a6d"/>
+      <path d="m54-10 27 9v3L54-7Z" fill="#55d5f0" opacity=".85"/>
+      <path d="m54-3 19 6v3L54 0Z" fill="#55d5f0" opacity=".6"/>
+      <path d="m54 4 31 10v3L54 7Z" fill="#55d5f0" opacity=".45"/>
+      <path d="m91 38 23-8 28 10-23 8Z" fill="#25334f"/>
+      <path d="m95 38 19-6 21 8-18 6Z" fill="#53648a"/>
+      <path d="m139 17 8-3 7 3-7 3Z" fill="#c4cfe7"/>
+      <path d="M139 17v11l8 3V20Z" fill="#8396bc"/>
+      <path d="m147 20 7-3v11l-7 3Z" fill="#5b729b"/>
+      <path d="m154 19 4 2v6l-4 2" fill="none" stroke="#5b729b" stroke-width="2"/>
+    </g>
+    <g id="person" shape-rendering="crispEdges">
+<path d="M8 51h32v4H8z" fill="#060918" opacity=".4"/>
+<path d="M15 40h8v14h-8zM28 40h8v14h-8z" fill="#8fa4c8"/>
+<path d="M11 29h27v17H11zM6 32h6v14H6zM38 32h6v14h-6z" fill="#c8d7ef"/>
+<path d="M19 34h12v8H19z" fill="currentColor"/>
+<path d="M17 3h19v3h5v5h3v14h-4v5h-7v3H18v-3h-7v-5H8V11h4V6h5z" fill="#dce7f7"/>
+<path d="M16 9h19v3h5v12h-5v3H16v-3h-4V12h4z" fill="#091323"/>
+<path d="M17 17v-3h5v3M28 17v-3h5v3M21 23h8" fill="none" stroke="currentColor" stroke-width="2"/>
+<path d="M5 12h5v12H5zM41 12h5v12h-5z" fill="currentColor"/>
+<path d="M11 10V6h5V3h20v3h5v4" fill="none" stroke="currentColor" stroke-width="2"/>
+</g>
+    <g id="chair" shape-rendering="crispEdges">
+      <path d="M3 0h29v20H3zM0 18h35v7H0zM7 25h5v17H7zM25 25h5v17h-5z" fill="#282c50"/>
+      <path d="M7 4h21v12H7z" fill="#3d3b67"/>
+    </g>
+  </defs>
+  <path d="m72 211 468-159 414 150-468 160Z" fill="#060918" opacity=".035"/>
+  <path d="m108 191 435-142 374 137-435 148Z" fill="#18243a"/>
+  <path d="m108 191 374 143v12L108 204Z" fill="#111a2d"/>
+  <path d="m482 334 435-148v13L482 347Z" fill="#10192e"/>
+  <path d="m108 111 435-142v80L108 191Z" fill="#19223a"/>
+  <path d="m543-31 374 137v80L543 49Z" fill="#1b2440"/>
+  <path d="m108 111 435-142v8L108 119Z" fill="#273454"/>
+  <path d="m543-31 374 137v8L543-23Z" fill="#293655"/>
+  <path d="m108 183 435-142v8L108 191Z" fill="#2f3c60"/>
+  <path d="m543 41 374 137v8L543 49Z" fill="#354466"/>
+  <path d="m108 191 435-142 374 137-435 148Z" fill="url(#tiles)" clip-path="url(#floor-clip)"/>
+  <!-- A quiet back wall with a pixel city view. -->
+  <g shape-rendering="crispEdges">
+    <path d="m627 16 176 64v77l-176-65Z" fill="#1e718b"/>
+    <path d="m633 25 164 60v63l-164-60Z" fill="#112b48"/>
+    <path d="m644 72 17 6V58l13 5v21l17 6V62l20 7v30l20 7V89l15 6v17l16 6V94l22 8v35L644 86Z" fill="#184c66"/>
+    <path d="m710 51 6 2v63l-6-2Z" fill="#23869d"/>
+    <path d="m633 65 164 59v5L633 70Z" fill="#1e697f"/>
+    <path d="m623 89 184 67v7L623 96Z" fill="#2b3e5f"/>
+    <!-- Wall planning board: intentionally no status-like text. -->
+    <path d="m345 56 92-30v51l-92 30Z" fill="#3c3d69"/>
+    <path d="m350 58 82-27v44l-82 27Z" fill="#1d2843"/>
+    <path d="m358 61 16-5v12l-16 5Z" fill="#a855f7"/>
+    <path d="m380 54 16-5v12l-16 5Z" fill="#06b6d4"/>
+    <path d="m402 47 16-5v12l-16 5Z" fill="#22c55e"/>
+    <path d="m358 80 16-5v12l-16 5Z" fill="#22c55e"/>
+    <path d="m380 73 16-5v12l-16 5Z" fill="#f59e0b"/>
+  </g>
+  <!-- Left storage cabinet and supplies. -->
+  <g shape-rendering="crispEdges">
+    <path d="m140 161 91-30 40 15-91 30Z" fill="#303d5c"/>
+    <path d="m140 161 40 15v44l-40-15Z" fill="#19253e"/>
+    <path d="m180 176 91-30v44l-91 30Z" fill="#24324e"/>
+    <path d="m185 181 80-26v12l-80 26Z" fill="#1b2942"/>
+    <path d="m185 199 80-26v12l-80 26Z" fill="#1b2942"/>
+    <path d="m195 178 7-2v10l-7 2Z" fill="#06b6d4"/>
+    <path d="m205 174 7-2v10l-7 2Z" fill="#a855f7"/>
+    <path d="m215 171 7-2v10l-7 2Z" fill="#818cf8"/>
+    <path d="m231 184 25-8v10l-25 8Z" fill="#345279"/>
+  </g>
+  <use href="#plant" x="166" y="110"/>
+  <use href="#plant" x="849" y="133"/>
+  <path d="m365 235 224-75 148 55-224 75Z" fill="#32234f" opacity=".65"/>
+  <path d="m377 236 211-70 133 49-211 70Z" fill="none" stroke="#573676" stroke-width="2"/>
+  <!-- The decorative team is static; real task state lives in the UI. -->
+  <use href="#chair" x="398" y="89"/>
+  <use href="#person" x="390" y="65" color="#38bdf8"/>
+  <use href="#desk" x="351" y="116"/>
+  <use href="#chair" x="601" y="151"/>
+  <use href="#person" x="593" y="127" color="#a855f7"/>
+  <use href="#desk" x="554" y="178"/>
+  <use href="#chair" x="278" y="187"/>
+  <use href="#person" x="270" y="163" color="#22c55e"/>
+  <use href="#desk" x="231" y="214"/>
+  <use href="#chair" x="482" y="247"/>
+  <use href="#person" x="474" y="223" color="#f472b6"/>
+  <use href="#desk" x="435" y="274"/>
+  <use href="#person" x="723" y="208" color="#fb923c"/>
+  <use href="#person" x="771" y="187" color="#06b6d4"/>
+  <use href="#plant" x="157" y="219"/>
+  <use href="#plant" x="679" y="265"/>
+  <g shape-rendering="crispEdges">
+    <path d="m791 237 42-14 25 9-42 14Z" fill="#344365"/>
+    <path d="m791 237 25 9v19l-25-9Z" fill="#243151"/>
+    <path d="m816 246 42-14v19l-42 14Z" fill="#2c3b5c"/>
+    <path d="M815 213h10v12h-10zM817 208h6v5h-6z" fill="#7c3aed"/>
+  </g>
+</svg>

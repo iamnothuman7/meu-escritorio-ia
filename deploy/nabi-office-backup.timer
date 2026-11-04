@@ -1,0 +1,10 @@
+[Unit]
+Description=NABI Office AI backup at 01:00 Fortaleza
+
+[Timer]
+OnCalendar=*-*-* 01:00:00 America/Fortaleza
+Persistent=true
+Unit=nabi-office-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=NABI Office AI daily consistent backup
+After=nabi-office.service
+
+[Service]
+Type=oneshot
+User=nabi-office
+Group=nabi-office
+WorkingDirectory=/opt/nabi-office/current
+EnvironmentFile=/etc/nabi-office/environment
+ExecStart=/opt/nabi-office/venv/bin/python /opt/nabi-office/current/manage.py backup_office
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nabi-office/data

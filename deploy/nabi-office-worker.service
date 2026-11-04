@@ -1,0 +1,22 @@
+[Unit]
+Description=NABI Office AI queue and scheduler
+After=network.target nabi-office.service
+
+[Service]
+Type=simple
+User=nabi-office
+Group=nabi-office
+WorkingDirectory=/opt/nabi-office/current
+EnvironmentFile=/etc/nabi-office/environment
+ExecStart=/opt/nabi-office/venv/bin/python /opt/nabi-office/current/manage.py runworker
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nabi-office/data
+
+[Install]
+WantedBy=multi-user.target
