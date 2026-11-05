@@ -20,12 +20,25 @@
     </div>
     <details class="approval-content">
       <summary>Revisar entrega</summary>
-      <pre class="prose">{{ item.delivery.body }}</pre>
+      {% include 'office/delivery_media.html' with delivery=item.delivery %}
+      {% if item.delivery.research_missing_sources %}<p class="notice">A execução não retornou citações verificáveis.</p>{% endif %}
+      <pre class="prose">{{ item.delivery.body|research_links:item.delivery.research_citations }}</pre>
+      {% if item.publish_caption and instagram_connection.connected and instagram_connection.available %}
+        <section class="panel panel-body">
+          <h3>Publicação no Instagram · @{{ instagram_connection.username }}</h3>
+          <p class="muted">Esta é a legenda que vai acompanhar a imagem acima no feed.</p>
+          <pre class="prose">{{ item.publish_caption }}</pre>
+        </section>
+      {% elif item.publish_caption and instagram_connection.available %}
+        <p class="muted">Para publicar esta arte direto pelo escritório, <a class="text-link" href="/settings/#instagram">conecte o Instagram desta empresa</a>.</p>
+      {% endif %}
       <form hx-sync="this:drop" class="form-actions approval-actions" method="post" action="/approvals/{{ item.pk }}/decision/">
         {% csrf_token %}<input type="hidden" name="hash" value="{{ item.current_hash }}">
+        {% if item.publish_caption and instagram_connection.connected and instagram_connection.available %}<input type="hidden" name="instagram_account_id" value="{{ instagram_connection.account_id }}">{% endif %}
         <a href="/tasks/{{ item.delivery.task_id }}/" class="btn secondary small">Editar entrega</a>
         <button type="submit" name="decision" value="reject" class="btn ghost small">Rejeitar</button>
-        <button type="submit" name="decision" value="approve" class="btn primary small">{% icon 'check' 17 %} Aprovar esta versão</button>
+        <button type="submit" name="decision" value="approve" class="btn primary small" {% if item.delivery.generated_image.status == 'queued' or item.delivery.generated_image.status == 'running' %}disabled{% endif %}>{% icon 'check' 17 %} Aprovar esta versão</button>
+        {% if item.publish_caption and instagram_connection.connected and instagram_connection.available %}<button type="submit" name="decision" value="publish" class="btn primary small">Aprovar e publicar</button>{% endif %}
       </form>
     </details>
   </article>
@@ -36,4 +49,18 @@
   </div>
   {% endfor %}
 </section>
+{% if publications %}
+<section class="panel panel-body" id="instagram-publications" aria-labelledby="instagram-publications-title">
+  {% if publication_pending %}<span class="live-poller" data-live-refresh aria-hidden="true" hx-get="/approvals/" hx-trigger="every 10s" hx-target="#instagram-publications" hx-select="#instagram-publications" hx-swap="outerHTML"></span>{% endif %}
+  <h2 id="instagram-publications-title">Publicações no Instagram</h2>
+  <div class="timeline">
+  {% for publication in publications %}
+    <div class="event"><span class="event-dot"></span><div class="event-copy"><a class="text-link" href="/tasks/{{ publication.delivery.task_id }}/">{{ publication.delivery.title }}</a>
+      <p>{{ publication.get_status_display }} · {{ publication.updated_at|date:'d/m · H:i' }}</p>
+      {% if publication.error %}<p class="muted">{{ publication.error }}</p>{% endif %}
+    </div></div>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
 {% endblock %}

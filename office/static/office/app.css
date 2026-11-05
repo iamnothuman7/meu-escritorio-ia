@@ -6,16 +6,18 @@
 h1, h2, h3, h4, .brand-name, .nav-item, .page-title, .section-title { font-family: Montserrat, Inter, "Segoe UI", sans-serif; }
 :root {
   --accent: #7c3aed;
-  --cyan: #06b6d4;
+  --cyan: #78dcf3;
   --ink: #f8fafc;
-  --muted: #94a2bc;
+  --muted: #a9b7cf;
   --paper: #0b1020;
-  --surface: #11182b;
-  --card: #151e32;
-  --line: #253048;
+  --surface: #121b30;
+  --card: #17223a;
+  --line: #303e5c;
   --sidebar: #0d1325;
+  --field: #10182d;
+  --field-line: #58709a;
   --radius: 12px;
-  --shadow: 0 6px 24px #00000018;
+  --shadow: 0 8px 28px #02050e42;
   color-scheme: dark;
   font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--ink);

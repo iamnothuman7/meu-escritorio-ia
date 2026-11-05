@@ -1,0 +1,77 @@
+{% load office_tags %}
+<section class="panel panel-body settings-section" id="instagram" aria-labelledby="instagram-title">
+  <p class="eyebrow">Publicação após aprovação</p>
+  <h2 id="instagram-title">Instagram</h2>
+  <p class="muted">Conecte a conta profissional da empresa ativa para publicar uma foto no feed com a legenda aprovada.</p>
+
+  {% if instagram_connection.connected %}
+  <div class="notice">
+    {% icon 'check' %}
+    <p><strong>Conta conectada{% if instagram_connection.username %} · @{{ instagram_connection.username }}{% endif %}</strong>{% if instagram_connection.account_id %}<br>ID da conta {{ instagram_connection.account_id }}{% endif %}</p>
+  </div>
+  {% endif %}
+
+  {% if not instagram_connection.available %}
+  <div class="notice warning">
+    {% icon 'shield' %}
+    <p>A publicação está indisponível nesta instalação. O servidor precisa de um endereço HTTPS público para a Meta buscar a foto aprovada.</p>
+  </div>
+  {% endif %}
+
+  <details{% if not instagram_connection.connected %} open{% endif %}>
+    <summary>Como gerar o token oficial da Meta</summary>
+    <div class="prose">
+      <ol>
+        <li>Use uma conta profissional do Instagram, do tipo <strong>Empresa</strong> ou <strong>Criador</strong>. Se a conta for pessoal, altere o tipo nas configurações do Instagram. <a href="https://help.instagram.com/502981923235522" target="_blank" rel="noopener noreferrer">Ajuda do Instagram sobre contas profissionais</a></li>
+        <li>Abra o <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">painel de apps da Meta</a> e crie ou selecione seu app. Escolha o caso de uso do Instagram para gerenciar conteúdo. No painel, abra <strong>API setup with Instagram login</strong>.</li>
+        <li>Autorize as permissões <code>instagram_business_basic</code> e <code>instagram_business_content_publish</code>. Se a Meta pedir um testador, adicione a conta em <strong>App roles</strong> e aceite o convite na conta profissional do Instagram. <a href="https://www.postman.com/meta/instagram/folder/1z5vxzu/instagram-api-with-instagram-login" target="_blank" rel="noopener noreferrer">Permissões na documentação oficial da Meta</a></li>
+        <li>Em <strong>Generate access tokens</strong>, adicione a conta profissional e escolha <strong>Generate token</strong>. Autorize o acesso ao perfil e à publicação. Copie o token gerado. <a href="https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/" target="_blank" rel="noopener noreferrer">Guia do Instagram Login da Meta</a></li>
+        <li>Cole o token no campo abaixo e salve. O Nabio Office verifica a conta e a permissão de publicação. O ID numérico é opcional e serve para conferir o destino. Se o token expirar, gere outro no painel da Meta e substitua aqui.</li>
+      </ol>
+      <p class="muted">Se você atender contas de terceiros por um mesmo app da Meta, confira os requisitos de acesso avançado e análise de permissões. <a href="https://developers.facebook.com/docs/app-review/" target="_blank" rel="noopener noreferrer">Análise de apps da Meta</a></p>
+    </div>
+  </details>
+
+  {% if instagram_connection.available %}
+  <form hx-boost="false" method="post" action="/settings/save/" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="instagram">
+    <div class="form-grid">
+      <div class="field">
+        <label for="instagram-token">{% if instagram_connection.connected %}Novo token do Instagram{% else %}Token do Instagram{% endif %}</label>
+        <input type="password" id="instagram-token" name="instagram_access_token" required maxlength="4096" autocomplete="new-password" autocapitalize="none" spellcheck="false" aria-describedby="instagram-token-help">
+        <small id="instagram-token-help">Cole o token de acesso gerado em Instagram Login.</small>
+      </div>
+      <div class="field">
+        <label for="instagram-account-id">ID da conta do Instagram <small>opcional</small></label>
+        <input type="text" id="instagram-account-id" name="instagram_account_id" inputmode="numeric" pattern="[0-9]+" maxlength="32" aria-describedby="instagram-id-help">
+        <small id="instagram-id-help">Use o ID numérico exibido no painel da Meta para conferir a conta de destino.</small>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn primary">{% if instagram_connection.connected %}Verificar e substituir token{% else %}Verificar e conectar Instagram{% endif %}</button>
+    </div>
+  </form>
+  {% endif %}
+
+  {% if instagram_connection.connected %}
+  <form hx-boost="false" method="post" action="/settings/save/">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="instagram">
+    <input type="hidden" name="clear" value="1">
+    <div class="form-actions"><button type="submit" class="btn danger">Desconectar Instagram</button></div>
+  </form>
+  {% endif %}
+
+  <details>
+    <summary>Como aprovar e publicar</summary>
+    <div class="prose">
+      <ol>
+        <li>Anexe uma foto JPEG à entrega e prepare a legenda.</li>
+        <li>Na fila de aprovações, confira a foto, a legenda e o perfil de destino.</li>
+        <li>Escolha <strong>Aprovar e publicar</strong> para enviar a publicação à fila. Acompanhe o resultado no escritório.</li>
+      </ol>
+      <p class="muted">A integração publica uma foto por vez no feed após a aprovação. <a href="https://developers.facebook.com/docs/instagram-platform/content-publishing/" target="_blank" rel="noopener noreferrer">Publicação de conteúdo na documentação da Meta</a></p>
+    </div>
+  </details>
+</section>

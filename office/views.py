@@ -28,8 +28,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.decorators.debug import sensitive_post_parameters
 
-from .models import Agent, Approval, Delivery, Event, FinancialEntry, Lead, Project, Routine, Run, Settlement, SystemState, Task, Workspace
-from . import chatgpt_plan, credentials, services
+from .models import Agent, Approval, Delivery, Event, FinancialEntry, InstagramPublication, Lead, Project, Routine, Run, Settlement, SystemState, Task, Workspace
+from . import chatgpt_plan, credentials, instagram, services
 
 
 def office_required(view):
@@ -60,7 +60,7 @@ def landing(request):
 
 
 def webmanifest(request):
-    response=JsonResponse({'id':'/','name':'Nabio Office','short_name':'Nabio Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':'/app/','scope':'/','display':'standalone','background_color':'#F8F7F4','theme_color':'#F8F7F4','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
+    response=JsonResponse({'id':'/','name':'Nabio Office','short_name':'Nabio Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':'/app/','scope':'/','display':'standalone','background_color':'#0B1020','theme_color':'#0B1020','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
     return response
 
 
@@ -143,6 +143,20 @@ def context(request, page):
     return {'w':w,'workspaces':Workspace.objects.filter(owner=request.user),'agents':agents,'all_agents':agents,'page':page,'pending_count':Approval.objects.filter(workspace=w,status='pending',expires_at__gt=timezone.now()).count(),'state':state,'worker_online':worker_online,'now':timezone.localtime(),'offline':w.ai_mode == 'offline','hosted':os.environ.get('NABI_HTTPS')=='1','is_htmx':is_htmx,'base_template':'office/shell.html' if is_htmx else 'office/base.html'}
 
 
+def attach_research_citations(deliveries):
+    for delivery in deliveries:
+        delivery.research_citations = []
+    researched = {(item.task_id, item.body): item for item in deliveries if item.kind == 'research'}
+    if not researched:
+        return
+    runs = Run.objects.filter(task_id__in={task_id for task_id, _ in researched}, status='completed').order_by('pk')
+    for run in runs:
+        delivery = researched.get((run.task_id, run.output))
+        if delivery and run.usage.get('research_status'):
+            delivery.research_citations = run.usage.get('citations', [])
+            delivery.research_missing_sources = not delivery.research_citations
+
+
 @office_required
 def dashboard(request):
     c = context(request, 'today')
@@ -183,7 +197,7 @@ def create_task(request):
     title = request.POST.get('title','').strip()[:180]
     objective = request.POST.get('objective','').strip()[:12000]
     kind = request.POST.get('kind','general')
-    if not title or not objective or kind not in ['general','content','summary','finance','template']:
+    if not title or not objective or kind not in ['general','content','research','summary','finance','template']:
         messages.error(request,'Informe um título, um objetivo e um tipo válido.')
         return redirect('/tasks/')
     # Browser-generated key also prevents duplicate form submission after a retry.
@@ -213,7 +227,14 @@ def create_task(request):
 def task_detail(request, pk):
     c = context(request,'tasks')
     task = get_object_or_404(Task,pk=pk,workspace=c['w'])
-    c.update(task=task,runs=Run.objects.filter(task=task).order_by('-started_at'),deliveries=Delivery.objects.filter(workspace=c['w'],task=task).order_by('-created_at'),events=Event.objects.filter(workspace=c['w'],task=task).order_by('created_at'))
+    deliveries = list(Delivery.objects.filter(workspace=c['w'],task=task).select_related('generated_image')
+                      .defer('generated_image__data').order_by('-created_at'))
+    attach_research_citations(deliveries)
+    c.update(task=task,runs=Run.objects.filter(task=task).order_by('-started_at'),deliveries=deliveries,
+             events=Event.objects.filter(workspace=c['w'],task=task).order_by('created_at'),
+             openai_key=credentials.has_api_key(request.user.pk,'openai'),
+             image_pending=any(getattr(item.generated_image, 'status', '') in ('queued','running')
+                               for item in deliveries if hasattr(item,'generated_image')))
     return render(request,'office/task_detail.html',c)
 
 
@@ -244,10 +265,18 @@ def task_action(request, pk):
 def approvals(request):
     c = context(request,'approvals')
     items = list(Approval.objects.filter(workspace=c['w'],status='pending',expires_at__gt=timezone.now())
-                 .select_related('delivery__task__agent').order_by('-id')[:100])
+                 .select_related('delivery__task__agent','delivery__generated_image')
+                 .defer('delivery__generated_image__data').order_by('-id')[:100])
+    attach_research_citations([item.delivery for item in items])
+    ig = instagram.connection_status(c['w'])
     for item in items:
         item.current_hash = services.delivery_hash(item.delivery)
-    c.update(items=items)
+        image = getattr(item.delivery,'generated_image',None)
+        if image and image.status=='ready':
+            item.publish_caption = instagram.caption_for(item.delivery)
+    publications = list(InstagramPublication.objects.filter(workspace=c['w']).select_related('delivery').order_by('-created_at')[:20])
+    c.update(items=items,openai_key=credentials.has_api_key(request.user.pk,'openai'),instagram_connection=ig,
+             publications=publications,publication_pending=any(item.status in ('queued','uploading','waiting','checking','publishing') for item in publications))
     return render(request,'office/approvals.html',c)
 
 
@@ -257,8 +286,12 @@ def decision(request, pk):
     w = active_workspace(request)
     approval = get_object_or_404(Approval,pk=pk,workspace=w,delivery__workspace=w)
     try:
-        services.approve_delivery(approval.delivery,request.POST.get('decision'),request.POST.get('hash',''))
-        messages.success(request,'Decisão registrada para esta versão da entrega.')
+        if request.POST.get('decision')=='publish':
+            instagram.approve_and_queue(approval.delivery,request.POST.get('hash',''),request.POST.get('instagram_account_id',''))
+            messages.success(request,'Entrega aprovada e enviada à fila do Instagram.')
+        else:
+            services.approve_delivery(approval.delivery,request.POST.get('decision'),request.POST.get('hash',''))
+            messages.success(request,'Decisão registrada para esta versão da entrega.')
     except (ValidationError,ValueError) as exc:
         messages.error(request,str(exc))
     return redirect('/approvals/')
@@ -381,7 +414,7 @@ def work_action(request):
             interval=int(request.POST.get('interval_minutes',240))
             if interval<30 or interval>10080: raise ValueError('Use um intervalo entre 30 minutos e 7 dias.')
             kind=request.POST.get('kind','content')
-            if kind not in ['content','general','summary','finance','template']: raise ValueError('Tipo inválido.')
+            if kind not in ['content','general','research','summary','finance','template']: raise ValueError('Tipo inválido.')
             name=request.POST.get('name','').strip()[:180]
             objective=request.POST.get('objective','').strip()[:5000]
             if not name or not objective: raise ValueError('Informe nome e objetivo da rotina.')
@@ -424,12 +457,13 @@ def settings_view(request):
     c['provider_ready']=services.provider_ready(c['w'])
     c['openai_key']=credentials.has_api_key(request.user.pk,'openai')
     c['claude_key']=credentials.has_api_key(request.user.pk,'claude')
+    c['instagram_connection']=instagram.connection_status(c['w'])
     return render(request,'office/settings.html',c)
 
 
 @office_required
 @require_POST
-@sensitive_post_parameters('api_key')
+@sensitive_post_parameters('api_key','instagram_access_token')
 def settings_action(request):
     w=active_workspace(request)
     action=request.POST.get('action')
@@ -477,6 +511,28 @@ def settings_action(request):
                 credentials.save_api_key(request.user.pk,mode,request.POST.get('api_key',''))
                 messages.success(request,'Chave salva na sua conta.')
             return redirect('/settings/#connections')
+        elif action=='image_automation':
+            mode=request.POST.get('image_mode','off')
+            if mode not in ('off','brand','openai'):
+                raise ValueError('Escolha um modo de criação de imagens.')
+            if mode=='openai' and (not request.POST.get('confirm_image') or not credentials.has_api_key(request.user.pk,'openai')):
+                raise ValueError('Cadastre sua chave da OpenAI API e confirme a cobrança de imagens.')
+            w.policy={**w.policy,'image_automation':mode}
+            w.save(update_fields=['policy'])
+        elif action=='web_research':
+            enabled=request.POST.get('enabled')=='1'
+            if enabled and not services.plan_connection(w)['connected']:
+                raise ValueError('Autorize o ChatGPT neste espaço para ativar pesquisa.')
+            w.policy={**w.policy,'web_research':enabled}
+            w.save(update_fields=['policy'])
+        elif action=='instagram':
+            if request.POST.get('clear')=='1':
+                instagram.disconnect(w)
+                messages.success(request,'Conta do Instagram desconectada.')
+            else:
+                instagram.connect(w,request.POST.get('instagram_access_token',''),request.POST.get('instagram_account_id',''))
+                messages.success(request,'Conta do Instagram conectada.')
+            return redirect('/settings/#instagram')
         elif action=='provider':
             mode=request.POST.get('ai_mode','offline')
             if mode not in ['offline','chatgpt','openai','claude']: raise ValueError('Escolha uma modalidade válida.')

@@ -1,6 +1,7 @@
 NABI_DATA_DIR=/var/lib/nabi-office/data
 NABI_ALLOWED_HOSTS=office.nabio.pro,127.0.0.1,localhost
 NABI_CSRF_TRUSTED_ORIGINS=https://office.nabio.pro
+NABI_PUBLIC_ORIGIN=https://office.nabio.pro
 NABI_HTTPS=1
 NABI_PORT=8787
 NABI_SETUP_TOKEN=GENERATE_RANDOM_TOKEN_ON_SERVER

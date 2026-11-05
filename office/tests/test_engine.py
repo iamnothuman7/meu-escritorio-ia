@@ -91,6 +91,23 @@ class EngineTests(TestCase):
         self.assertTrue(manual.deliveries.exists())
         self.assertIn("tarefas avulsas", next_manual.runs.get().error)
 
+    def test_public_research_uses_only_the_explicit_public_brief(self):
+        self.workspace.ai_mode = "chatgpt"
+        self.workspace.ai_model = "modelo-da-conta"
+        self.workspace.policy = {"chatgpt_confirmed": True, "web_research": True}
+        self.workspace.description = "Contexto interno da empresa"
+        self.workspace.save()
+        research = queue_task(self.task(kind="research", inputs="https://example.com/perfil-publico"))
+        with patch("office.chatgpt_plan.status", return_value={"connected": True, "owner_id": self.owner.pk}), patch(
+            "office.chatgpt_plan.generate", return_value={"body": "Resultado", "usage": {"research_status": "no_sources"}},
+        ) as generate:
+            process_one()
+        self.assertTrue(generate.call_args.kwargs["web_research"])
+        prompt = generate.call_args.args[2]
+        self.assertIn("https://example.com/perfil-publico", prompt)
+        self.assertNotIn(self.workspace.description, prompt)
+        self.assertEqual(research.deliveries.get().kind, "research")
+
     def test_cross_workspace_agent_rejected(self):
         with self.assertRaises(ValidationError):
             self.task(agent=self.other.agents.first())

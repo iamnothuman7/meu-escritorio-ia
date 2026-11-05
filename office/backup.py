@@ -124,6 +124,19 @@ def _disable_execution(database: Path) -> None:
         for table, statement in updates.items():
             if table in tables:
                 connection.execute(statement)
+        if "office_instagrampublication" in tables:
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")
+            connection.execute(
+                "UPDATE office_instagrampublication "
+                "SET status='cancelled', error=?, finished_at=?, updated_at=? "
+                "WHERE status IN ('queued', 'uploading', 'waiting', 'checking')",
+                ("Publicação cancelada ao restaurar o backup.", now, now),
+            )
+            connection.execute(
+                "UPDATE office_instagrampublication "
+                "SET status='uncertain', error=?, finished_at=?, updated_at=? WHERE status='publishing'",
+                ("Resultado desconhecido após a restauração. Confira o perfil do Instagram.", now, now),
+            )
         if "office_systemstate" in tables:
             connection.execute("INSERT OR IGNORE INTO office_systemstate (id, paused) VALUES (1, 1)")
             columns = {row[1] for row in connection.execute("PRAGMA table_info(office_systemstate)")}

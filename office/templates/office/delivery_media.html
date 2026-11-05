@@ -1,0 +1,20 @@
+{% load office_tags %}
+{% with art=delivery.generated_image %}
+{% if art.status == 'ready' %}
+  <figure class="delivery-image">
+    <img src="{% url 'delivery_image' delivery.pk %}" alt="Arte de {{ delivery.title }}" width="1080" height="1080" loading="lazy">
+    <figcaption>{% if art.mode == 'brand' %}Arte montada com a identidade desta empresa{% else %}Imagem gerada pela OpenAI API{% endif %}</figcaption>
+  </figure>
+  <a class="btn secondary small" href="{% url 'delivery_image' delivery.pk %}?download=1" hx-boost="false">{% icon 'download' 16 %}Baixar imagem JPEG</a>
+{% elif art.status == 'queued' or art.status == 'running' %}
+  <p class="notice">A Luma está preparando a arte. A aprovação será liberada quando a imagem chegar.</p>
+{% elif delivery.kind == 'content' and delivery.task.status == 'review' %}
+  {% if art.error %}<p class="message error">{{ art.error }}</p>{% endif %}
+  <form class="form-actions" method="post" action="{% url 'request_image' delivery.pk %}" hx-sync="this:drop">
+    {% csrf_token %}<input type="hidden" name="version" value="{{ delivery.version }}">
+    <button class="btn secondary small" name="image_mode" value="brand">Montar arte com a marca</button>
+    {% if openai_key %}<label class="checkbox"><input type="checkbox" name="confirm_image" value="1">Autorizo uma geração cobrada pela OpenAI API.</label>
+    <button class="btn secondary small" name="image_mode" value="openai">Gerar imagem pela OpenAI</button>{% endif %}
+  </form>
+{% endif %}
+{% endwith %}

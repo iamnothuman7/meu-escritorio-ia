@@ -65,7 +65,9 @@ def _post(url, payload, headers):
         raise ProviderError("Não foi possível confirmar a resposta do provedor. Consumo a confirmar; não haverá repetição automática.", uncertain=True) from None
 
 
-def generate(mode, model, instructions, prompt, max_output_tokens=1024, *, owner_id):
+def generate(mode, model, instructions, prompt, max_output_tokens=1024, *, owner_id, web_research=False):
+    if web_research and mode != "chatgpt":
+        raise ProviderError("A pesquisa pública está disponível apenas na conexão autorizada do plano ChatGPT.")
     if not model:
         raise ProviderError("Nenhum modelo foi escolhido e validado.")
     if mode == "openai":
@@ -106,7 +108,7 @@ def generate(mode, model, instructions, prompt, max_output_tokens=1024, *, owner
         from . import chatgpt_plan
 
         try:
-            result = chatgpt_plan.generate(model, instructions, prompt, owner_id=owner_id)
+            result = chatgpt_plan.generate(model, instructions, prompt, owner_id=owner_id, web_research=web_research)
         except chatgpt_plan.PlanError as exc:
             raise ProviderError(str(exc), uncertain=exc.uncertain, code=exc.code) from None
     else:

@@ -148,6 +148,58 @@ class Approval(ScopedModel):
     decided_at = models.DateTimeField(null=True, blank=True)
 
 
+class DeliveryImage(models.Model):
+    delivery = models.OneToOneField(Delivery, on_delete=models.CASCADE, related_name="generated_image")
+    mode = models.CharField(max_length=12, default="brand", choices=[("brand", "Arte da marca"), ("openai", "OpenAI API")])
+    status = models.CharField(max_length=12, default="queued", db_index=True, choices=[
+        ("queued", "Na fila"), ("running", "Gerando imagem"),
+        ("ready", "Imagem pronta"), ("failed", "Imagem indisponível"),
+    ])
+    requested_version = models.PositiveIntegerField()
+    requested_hash = models.CharField(max_length=64)
+    key_fingerprint = models.CharField(max_length=64, blank=True)
+    automatic = models.BooleanField(default=False)
+    sha256 = models.CharField(max_length=64, blank=True)
+    data = models.BinaryField(null=True, editable=False)
+    error = models.CharField(max_length=300, blank=True)
+    requested_at = models.DateTimeField(default=timezone.now)
+    started_at = models.DateTimeField(null=True, blank=True)
+    attempted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+
+class InstagramPublication(ScopedModel):
+    delivery = models.OneToOneField(Delivery, on_delete=models.CASCADE, related_name="instagram_publication")
+    approval = models.ForeignKey(Approval, on_delete=models.CASCADE)
+    approved_hash = models.CharField(max_length=64)
+    image_sha256 = models.CharField(max_length=64)
+    account_id = models.CharField(max_length=32)
+    account_username = models.CharField(max_length=100)
+    caption = models.TextField()
+    status = models.CharField(max_length=16, default="queued", choices=[
+        ("queued", "Na fila"), ("uploading", "Preparando no Instagram"),
+        ("waiting", "Aguardando processamento do Instagram"), ("checking", "Verificando imagem"),
+        ("publishing", "Publicando"), ("published", "Publicado"), ("failed", "Falhou"),
+        ("uncertain", "Resultado não confirmado"), ("cancelled", "Cancelado"),
+    ])
+    container_id = models.CharField(max_length=32, blank=True)
+    media_id = models.CharField(max_length=32, blank=True)
+    error = models.CharField(max_length=300, blank=True)
+    next_check_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["status", "next_check_at"], name="ig_publication_due_idx")]
+
+    def clean(self):
+        super().clean()
+        if self.approval_id and (self.approval.delivery_id != self.delivery_id or self.approval.workspace_id != self.workspace_id):
+            raise ValidationError({"approval": "A aprovação pertence a outra entrega ou empresa."})
+
+
 class Event(ScopedModel):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, null=True, blank=True, related_name="events")
     kind = models.CharField(max_length=60)

@@ -11,6 +11,15 @@
   <section class="provider-credentials" aria-labelledby="api-credentials">
     <h3 id="api-credentials">Chaves da sua conta</h3>
     <p class="muted" id="provider-key-help">Use as chaves da sua conta de API. Elas podem ser usadas nas suas empresas, conforme o provedor e os limites que você configurar em cada espaço.</p>
+    <details>
+      <summary>Como conectar a OpenAI API para imagens</summary>
+      <ol>
+        <li>Entre na <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">plataforma da OpenAI</a>, selecione o projeto que vai usar no escritório e crie uma chave de API.</li>
+        <li>Confira o <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noopener noreferrer">faturamento da API</a> e a liberação de modelos de imagem. Alguns projetos precisam verificar a organização.</li>
+        <li>Cole a chave no campo OpenAI API abaixo. Na seção <strong>Arte da Luma</strong>, escolha a geração pela OpenAI, confirme a cobrança e salve.</li>
+      </ol>
+      <p class="muted">Você pode manter Plano ChatGPT como provedor de texto. A opção de montagem com a marca cria um JPEG usando o texto da Luma, sem cobrança da API de imagens.</p>
+    </details>
     <div class="provider-key-grid">
       <form class="provider-key-card" hx-boost="false" method="post" action="/settings/save/" autocomplete="off" aria-labelledby="openai-key-title">
         {% csrf_token %}
@@ -77,4 +86,25 @@
     </details>
     <div class="form-actions"><button class="btn primary small">Salvar conexão</button>{% if provider_ready %}<a class="btn secondary small" href="/work/?tab=routines">Abrir rotinas</a>{% endif %}</div>
   </form>
+  <form class="provider-connection-form" hx-sync="this:drop" method="post" action="/settings/save/">
+    {% csrf_token %}<input type="hidden" name="action" value="image_automation">
+    <h3>Arte da Luma</h3>
+    <div class="field"><label>Criação automática de imagem<select name="image_mode">
+      <option value="off" {% if not w.policy.image_automation or w.policy.image_automation == 'off' %}selected{% endif %}>Desligada</option>
+      <option value="brand" {% if w.policy.image_automation == 'brand' %}selected{% endif %}>Montar JPEG com a identidade da empresa</option>
+      <option value="openai" {% if w.policy.image_automation == 'openai' %}selected{% endif %} {% if not openai_key %}disabled{% endif %}>Gerar pela OpenAI API</option>
+    </select></label></div>
+    <p class="muted">A primeira opção de criação usa o logo e o texto que a Luma escreveu. A OpenAI API usa sua chave e permite uma tentativa por dia na conta.</p>
+    {% if openai_key %}<label class="checkbox"><input type="checkbox" name="confirm_image" value="1">Autorizo a cobrança de imagens na minha OpenAI API.</label>{% endif %}
+    <button class="btn secondary small">Salvar criação de imagem</button>
+  </form>
+  {% if plan.connected %}
+  <form class="provider-connection-form" hx-sync="this:drop" method="post" action="/settings/save/">
+    {% csrf_token %}<input type="hidden" name="action" value="web_research">
+    <h3>Pesquisa pública</h3>
+    <label class="checkbox"><input type="checkbox" name="enabled" value="1" {% if w.policy.web_research %}checked{% endif %}>Permitir pesquisa pública em tarefas de Radar e Luma neste espaço.</label>
+    <p class="muted">Nas tarefas de pesquisa, use somente referências que possam ser pesquisadas na web pública.</p>
+    <button class="btn secondary small">Salvar pesquisa</button>
+  </form>
+  {% endif %}
 </section>

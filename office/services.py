@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 from django.utils.dateparse import parse_datetime
 
-from . import providers
+from . import image_art, providers
 from .models import (Agent, Approval, Delivery, Event, FinancialEntry, Lead, Project, Routine,
                      RoutineOccurrence, Run, Settlement, SystemState, Task, Workspace)
 
@@ -128,10 +128,14 @@ def queue_task(task):
     return task
 
 
-def delivery_hash(delivery):
+def delivery_hash(delivery, *, include_image=True, verify_image=False):
     payload = {"workspace": delivery.workspace_id, "task": delivery.task_id, "id": delivery.pk,
                "title": delivery.title, "body": delivery.body, "kind": delivery.kind, "version": delivery.version,
                "action": "accept_local_delivery"}
+    if include_image:
+        digest = image_art.approval_digest(delivery, verify=verify_image)
+        if digest:
+            payload["image_sha256"] = digest
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
@@ -142,7 +146,7 @@ def approve_delivery(delivery, decision, expected_hash):
     if decision not in ("approved", "rejected", "approve", "reject"):
         raise ValidationError("Decisão inválida.")
     decision = {"approve": "approved", "reject": "rejected"}.get(decision, decision)
-    current_hash = delivery_hash(delivery)
+    current_hash = delivery_hash(delivery, verify_image=True)
     if not constant_time_compare(str(expected_hash), current_hash):
         raise ValidationError("A entrega mudou. Revise a versão atual antes de decidir.")
     approval = delivery.approvals.filter(status="pending", payload_hash=current_hash).order_by("-id").first()
@@ -300,6 +304,8 @@ def process_one(provider=None):
     SystemState.objects.filter(pk=1).update(worker_heartbeat=timezone.now())
     if SystemState.objects.filter(pk=1, paused=True).exists():
         return False
+    if provider is None and image_art.process_one_image():
+        return True
     task = Task.objects.filter(status="queued", workspace__paused=False).select_related("workspace", "agent").order_by("created_at").first()
     if not task:
         return False
@@ -307,6 +313,22 @@ def process_one(provider=None):
         return False
     task.status = "running"
     instructions = SHARED_INSTRUCTIONS + "\n" + (task.agent.instructions if task.agent else "Prepare a entrega delimitada pelo pedido.")
+    web_research = task.kind == "research"
+    if web_research:
+        instructions = (
+            "Pesquise fontes públicas sobre o pedido, em português do Brasil. Cite as páginas realmente consultadas "
+            "perto de cada fato e separe observação de hipótese. Use só informações públicas de empresas. "
+            "Para prospecção, limite-se a páginas institucionais e canais comerciais publicados. "
+            "Não invente empresas, contatos, dados de perfis, acesso a publicações ou ações realizadas. "
+            "Se a fonte estiver inacessível, indique a lacuna. Entregue um rascunho para revisão."
+        )
+    if task.kind == "content" and task.agent and task.agent.slug == "luma":
+        instructions += (
+            "\nEntregue o texto que será publicado sob o cabeçalho LEGENDA: em linha própria. "
+            "Depois da legenda, inclua três linhas separadas "
+            "para a imagem, sem Markdown: TITULO DA ARTE: (até 60 caracteres), "
+            "SUBTITULO DA ARTE: (até 100 caracteres), CTA DA ARTE: (até 35 caracteres)."
+        )
     run = Run.objects.create(task=task, provider=task.mode, agent_version=task.agent.version if task.agent else 1,
                              instructions_snapshot=instructions, input_snapshot={"title": task.title, "objective": task.objective, "inputs": task.inputs,
                                                                               "model": task.workspace.ai_model, "mode": task.mode})
@@ -316,6 +338,11 @@ def process_one(provider=None):
         task.clean()
         if task.agent and not task.agent.enabled:
             raise providers.ProviderError("Agente desativado. Nenhuma chamada realizada.")
+        if web_research and (
+            task.mode != "chatgpt" or not task.workspace.policy.get("web_research")
+            or not task.agent or task.agent.slug not in ("radar", "luma")
+        ):
+            raise providers.ProviderError("Autorize a pesquisa pública nas configurações e selecione Radar ou Luma com o plano ChatGPT.")
         if is_paused(task.workspace) or Task.objects.filter(pk=task.pk, status__in=["paused", "cancelled"]).exists():
             raise providers.ProviderError("Execução interrompida pela pausa do escritório ou da tarefa.")
         body = local_result(task)
@@ -323,7 +350,11 @@ def process_one(provider=None):
         if body is None:
             if task.mode == "offline" and provider is None:
                 raise providers.ProviderError("Sem IA conectada. Configure um provedor para gerar conteúdo, ou use resumo, conferência financeira ou modelo manual local.")
-            prompt = _context(task)
+            prompt = (
+                json.dumps({"titulo": task.title, "objetivo": task.objective, "referencias_publicas": task.inputs},
+                           ensure_ascii=False)
+                if web_research else _context(task)
+            )
             if provider is not None:
                 result = provider(task.mode, task.workspace.ai_model, instructions, prompt, 1024)
             else:
@@ -341,8 +372,9 @@ def process_one(provider=None):
                 called_provider = True
                 run.usage = {"provider_called": True, "pending_usage": True}
                 run.save(update_fields=["usage"])
+                options = {"web_research": True} if web_research else {}
                 result = providers.generate(task.mode, task.workspace.ai_model, instructions, prompt, max_output,
-                                            owner_id=task.workspace.owner_id)
+                                            owner_id=task.workspace.owner_id, **options)
             body = result["body"]
             usage = result.get("usage", {})
             if called_provider:
@@ -360,7 +392,7 @@ def process_one(provider=None):
             raise providers.ProviderError("A saída não contém uma entrega textual válida.", uncertain=called_provider)
         # A completed provider call is still persisted when pause is requested; no next external step is started.
         with transaction.atomic():
-            kind = "content" if task.kind == "content" else ("local" if usage.get("local") else "draft")
+            kind = task.kind if task.kind in ("content", "research") else ("local" if usage.get("local") else "draft")
             title = task.title
             first_line = body.strip().partition("\n")[0].strip().strip("*")
             if kind == "content" and first_line.casefold().startswith("título:"):
@@ -372,6 +404,7 @@ def process_one(provider=None):
             run.status, run.output, run.usage, run.finished_at = "completed", body, usage, timezone.now()
             run.save(update_fields=["status", "output", "usage", "finished_at", "reservation_usd"])
             Event.objects.create(workspace=task.workspace, task=task, kind="delivery.created", message="Entrega salva para revisão. Nenhuma ação externa foi executada.")
+            image_art.queue_automatic_image(delivery)
     except (providers.ProviderError, ValidationError) as exc:
         message = "; ".join(exc.messages) if isinstance(exc, ValidationError) else str(exc)
         run.status, run.error, run.finished_at = "blocked", message[:1000], timezone.now()

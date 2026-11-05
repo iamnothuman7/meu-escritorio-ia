@@ -12,7 +12,8 @@
   </div>
 
   <section class="workspace-overview" aria-labelledby="workspace-overview-title">
-    <span class="overview-mark" aria-hidden="true">{% icon 'grid' 28 %}</span>
+    {% if w.logo %}<span class="overview-mark company-mark"><img src="/logo/{{ w.pk }}/" alt="" width="72" height="48"></span>
+    {% else %}<span class="overview-mark" aria-hidden="true">{% icon 'grid' 28 %}</span>{% endif %}
     <div>
       <p class="eyebrow">EMPRESA ATIVA</p>
       <h2 id="workspace-overview-title">{{ w.name }}</h2>

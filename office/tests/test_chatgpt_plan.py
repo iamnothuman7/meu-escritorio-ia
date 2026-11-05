@@ -125,11 +125,66 @@ class ChatGPTPlanTests(SimpleTestCase):
         self.assertTrue(sent['stream'])
         self.assertFalse(sent['store'])
         self.assertNotIn('max_output_tokens', sent)
+        self.assertNotIn('tools', sent)
+        self.assertNotIn('research_status', result['usage'])
         self.assertEqual(sent['input'], [{'role': 'user', 'content': 'Pedido'}])
         response.iter_lines.return_value = [b'data: {"type":"response.output_text.delta","delta":"parcial"}', b'']
         with self.assertRaises(plan.PlanError) as failure:
             plan._stream_response(response, 'gpt-6.1-sol')
         self.assertTrue(failure.exception.uncertain)
+
+    def test_research_only_records_public_provider_annotations(self):
+        response = mock_response({})
+        citation = {'type': 'url_citation', 'url': 'https://example.com/source',
+                    'title': 'Fonte oficial', 'start_index': 0, 'end_index': 5}
+        final = {'type': 'response.completed', 'response': {'status': 'completed', 'output': [
+            {'type': 'web_search_call', 'status': 'completed'},
+            {'type': 'message', 'content': [
+                {'type': 'output_text', 'text': 'Endereço em texto https://example.org/unverified'},
+                {'type': 'output_text', 'text': 'Fonte consultada', 'annotations': [citation,
+                    {**citation, 'url': 'http://169.254.169.254/metadata'},
+                    {**citation, 'url': 'javascript:alert(1)'},
+                ]},
+            ]},
+        ]}}
+        added = {'type': 'response.output_text.annotation.added', 'output_index': 1,
+                 'content_index': 1, 'annotation': citation}
+        response.iter_lines.return_value = [line for item in (added, final)
+                                            for line in (b'data: ' + json.dumps(item).encode(), b'')]
+        with patch.object(plan, '_access_token', return_value='test-access'), patch.object(plan, '_http', return_value=response) as request:
+            result = plan.generate('gpt-6.1-sol', 'Pesquise fontes públicas', 'Pedido', owner_id=7, web_research=True)
+        self.assertEqual(request.call_args.kwargs['json']['tools'], [{'type': 'web_search'}])
+        self.assertEqual(result['usage']['research_status'], 'sourced')
+        self.assertEqual(result['usage']['sources'], [{'url': citation['url'], 'title': citation['title']}])
+        self.assertEqual(len(result['usage']['citations']), 1)
+        span = result['usage']['citations'][0]
+        self.assertEqual(result['body'][span['start_index']:span['end_index']], 'Fonte')
+
+    def test_research_stream_without_citations_is_explicitly_unverified(self):
+        response = mock_response({})
+        text = {'type': 'response.output_text.done', 'output_index': 2, 'content_index': 0,
+                'text': 'Um site mencionado https://example.org/unverified'}
+        completed = {'type': 'response.completed', 'response': {'status': 'completed', 'output': []}}
+        searched = {'type': 'response.web_search_call.completed'}
+        for events, expected in (((text, completed), 'not_used'), ((searched, text, completed), 'no_sources')):
+            with self.subTest(expected=expected):
+                response.iter_lines.return_value = [line for item in events
+                                                    for line in (b'data: ' + json.dumps(item).encode(), b'')]
+                usage = plan._stream_response(response, 'gpt-6.1-sol', web_research=True)['usage']
+                self.assertEqual(usage['research_status'], expected)
+                self.assertEqual(usage['sources'], [])
+                self.assertEqual(usage['citations'], [])
+
+    def test_research_rejection_never_retries_without_tool(self):
+        response = mock_response({'error': {'code': 'subscription_sharing_unsupported_capability',
+                                            'message': 'Private details should not be returned'}})
+        response.status_code = 400
+        with patch.object(plan, '_access_token', return_value='test-access'), patch.object(plan, '_http', return_value=response) as request:
+            with self.assertRaises(plan.PlanError) as failure:
+                plan.generate('gpt-6.1-sol', 'Pesquise fontes públicas', 'Pedido', owner_id=7, web_research=True)
+        request.assert_called_once()
+        self.assertEqual(failure.exception.code, plan.WEB_RESEARCH_UNAVAILABLE)
+        self.assertNotIn('Private details', str(failure.exception))
 
     def test_stream_accepts_text_events_with_metadata_only_completion(self):
         response = mock_response({})

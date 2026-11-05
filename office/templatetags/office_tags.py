@@ -1,7 +1,33 @@
 from decimal import Decimal
+from urllib.parse import urlsplit
 from django import template
+from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 register = template.Library()
+
+
+@register.filter
+def research_links(body, citations):
+    if not citations:
+        return body
+    parts = []
+    cursor = 0
+    for citation in sorted(citations, key=lambda entry: entry.get('end_index', 0)):
+        end = citation.get('end_index')
+        url = citation.get('url', '')
+        if type(end) is not int or not cursor < end <= len(body):
+            continue
+        try:
+            parsed = urlsplit(url)
+        except ValueError:
+            continue
+        if parsed.scheme not in ('https', 'http') or not parsed.hostname or parsed.username:
+            continue
+        parts.append(body[cursor:end])
+        parts.append(format_html(' <a href="{}" target="_blank" rel="noopener noreferrer">[Fonte]</a>', url))
+        cursor = end
+    parts.append(body[cursor:])
+    return format_html_join('', '{}', ((part,) for part in parts))
 
 @register.filter
 def money(value):
@@ -36,4 +62,6 @@ def icon(name, size=20):
 
 @register.filter
 def label(value):
+    if value == 'research':
+        return 'Pesquisa pública'
     return {'draft':'Rascunho','queued':'Na fila','running':'Trabalhando','review':'Em revisão','completed':'Concluída','blocked':'Bloqueada','paused':'Pausada','failed':'Falhou','cancelled':'Cancelada','pending':'Pendente','approved':'Aprovada','rejected':'Rejeitada','expired':'Expirada','income':'A receber','expense':'A pagar','new':'Novo','qualified':'Qualificado','contacted':'Contato registrado','proposal':'Proposta','won':'Ganho','closed':'Encerrado','active':'Em andamento','done':'Concluído','offline':'Sem IA','openai':'OpenAI API','claude':'Claude API','chatgpt':'Plano ChatGPT','normal':'Normal','high':'Alta','low':'Baixa','general':'Geração com IA','content':'Conteúdo com IA','summary':'Resumo local','finance':'Conferência local','template':'Modelo local'}.get(value,value)

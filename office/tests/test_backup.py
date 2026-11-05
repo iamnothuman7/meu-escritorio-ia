@@ -82,6 +82,25 @@ class BackupTests(SimpleTestCase):
             self.assertEqual(connection.execute("SELECT digest FROM office_owneraccesscode").fetchone(),
                              ("temporary-access-digest-marker",))
 
+    def test_restore_prevents_replay_of_instagram_publications(self):
+        statuses = ["queued", "uploading", "waiting", "checking", "publishing", "published", "failed"]
+        with closing(sqlite3.connect(self.database)) as connection:
+            connection.execute("CREATE TABLE office_instagrampublication "
+                               "(id INTEGER PRIMARY KEY, status TEXT, error TEXT, finished_at TEXT, updated_at TEXT)")
+            connection.executemany("INSERT INTO office_instagrampublication (status) VALUES (?)",
+                                   [(status,) for status in statuses])
+            connection.commit()
+        self.backup()
+        restored = restore_backup(self.archive, self.root / "laboratory")
+        with closing(sqlite3.connect(restored / "office.sqlite3")) as connection:
+            rows = connection.execute("SELECT status, finished_at FROM office_instagrampublication ORDER BY id").fetchall()
+        self.assertEqual([status for status, _ in rows],
+                         ["cancelled"] * 4 + ["uncertain", "published", "failed"])
+        self.assertTrue(all(finished for _, finished in rows[:5]))
+        with closing(sqlite3.connect(self.database)) as connection:
+            self.assertEqual(connection.execute("SELECT status FROM office_instagrampublication ORDER BY id").fetchall(),
+                             [(status,) for status in statuses])
+
     def test_existing_data_is_never_overwritten(self):
         self.backup()
         with self.assertRaises(ValueError):

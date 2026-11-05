@@ -4,6 +4,7 @@ from contextlib import contextmanager, suppress
 import hashlib
 import hmac
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import ipaddress
 import json
 import math
 import os
@@ -30,6 +31,7 @@ SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use
 PLAN_SCOPES = {'offline_access', 'resource.invoke', 'chatgpt.tokens.use.direct'}
 CALLBACK = '/auth/callback'
 FILE_LIMIT = 128 * 1024
+WEB_RESEARCH_UNAVAILABLE = 'chatgpt_web_search_unavailable'
 
 
 class PlanError(Exception):
@@ -433,10 +435,64 @@ def _inference_error(status_code, payload, *, uncertain=False):
     return PlanError(message, uncertain=uncertain, code=code if code in messages else '')
 
 
-def _stream_response(response, model):
+def _public_source(annotation):
+    if not isinstance(annotation, dict) or annotation.get('type') != 'url_citation':
+        return None
+    url = annotation.get('url')
+    if (not isinstance(url, str) or len(url) > 2048 or '\\' in url
+            or any(character.isspace() or ord(character) < 32 for character in url)):
+        return None
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or '').lower().rstrip('.')
+        if parsed.scheme not in ('https', 'http') or not host or parsed.username is not None:
+            return None
+        if parsed.port not in (None, 80, 443):
+            return None
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError:
+            if '.' not in host or host.endswith(('.localhost', '.local', '.internal')) or host.replace('.', '').isdigit():
+                return None
+        else:
+            if not address.is_global or address.is_multicast:
+                return None
+    except ValueError:
+        return None
+    title = annotation.get('title')
+    return {'url': url, 'title': (' '.join(title.split())[:200] if isinstance(title, str) else '') or host}
+
+
+def _web_evidence(parts, annotations, searched):
+    sources, citations = {}, {}
+    offset = 0
+    for key, text in parts:
+        for annotation in annotations.get(key, ()):
+            source = _public_source(annotation)
+            if source is None:
+                continue
+            url = source['url']
+            if url not in sources and len(sources) >= 40:
+                continue
+            sources.setdefault(url, source)
+            start, end = annotation.get('start_index'), annotation.get('end_index')
+            if type(start) is int and type(end) is int and 0 <= start < end <= len(text) and len(citations) < 80:
+                span = offset + start, offset + end, url
+                citations[span] = {**source, 'start_index': span[0], 'end_index': span[1]}
+        offset += len(text) + 1
+    return {
+        'research_status': 'sourced' if sources else ('no_sources' if searched else 'not_used'),
+        'sources': list(sources.values()),
+        'citations': [citations[key] for key in sorted(citations)],
+    }
+
+
+def _stream_response(response, model, *, web_research=False):
     data_lines = []
     received = 0
     text_parts = {}
+    annotations = {}
+    searched = False
     for line in response.iter_lines(chunk_size=1024):
         received += len(line)
         if received > 4_000_000:
@@ -453,6 +509,11 @@ def _stream_response(response, model):
         kind = event.get('type')
         if kind in ('response.failed', 'response.incomplete', 'error'):
             raise _inference_error(200, event, uncertain=True)
+        if web_research and kind == 'response.web_search_call.completed':
+            searched = True
+        if web_research and kind == 'response.output_text.annotation.added':
+            key = (event.get('output_index', 0), event.get('content_index', 0))
+            annotations.setdefault(key, []).append(event.get('annotation'))
         if kind in ('response.output_text.delta', 'response.output_text.done'):
             key = (event.get('output_index', 0), event.get('content_index', 0))
             if kind == 'response.output_text.delta' and isinstance(event.get('delta'), str):
@@ -462,32 +523,49 @@ def _stream_response(response, model):
             continue
         if kind == 'response.output_item.done':
             item = event.get('item') or {}
+            if web_research and item.get('type') == 'web_search_call' and item.get('status') == 'completed':
+                searched = True
             if item.get('type') == 'message':
                 for index, part in enumerate(item.get('content') or []):
                     if part.get('type') == 'output_text' and isinstance(part.get('text'), str):
-                        text_parts[(event.get('output_index', 0), index)] = [part['text']]
+                        key = (event.get('output_index', 0), index)
+                        text_parts[key] = [part['text']]
+                        if web_research:
+                            annotations.setdefault(key, []).extend(part.get('annotations') or [])
             continue
         if kind != 'response.completed':
             continue
         completed = event.get('response') or {}
         if completed.get('status') not in (None, 'completed'):
             raise PlanError('A OpenAI não confirmou uma resposta concluída.', uncertain=True)
-        body = '\n'.join(part.get('text', '') for item in completed.get('output') or []
-                         if item.get('type') == 'message' for part in item.get('content', [])
-                         if part.get('type') == 'output_text')
+        parts = []
+        for output_index, item in enumerate(completed.get('output') or []):
+            if web_research and item.get('type') == 'web_search_call' and item.get('status') == 'completed':
+                searched = True
+            if item.get('type') != 'message':
+                continue
+            for content_index, part in enumerate(item.get('content') or []):
+                if part.get('type') == 'output_text':
+                    key = (output_index, content_index)
+                    parts.append((key, part.get('text', '')))
+                    if web_research:
+                        annotations.setdefault(key, []).extend(part.get('annotations') or [])
+        body = '\n'.join(text for _, text in parts)
         if not body.strip():
-            body = '\n'.join(''.join(text_parts[key]) for key in sorted(text_parts))
+            parts = [(key, ''.join(text_parts[key])) for key in sorted(text_parts)]
+            body = '\n'.join(text for _, text in parts)
         if not body.strip():
             raise PlanError('O plano ChatGPT não devolveu texto para revisão.', uncertain=True)
         usage = completed.get('usage') or {}
-        return {'body': body, 'usage': {'input_tokens': usage.get('input_tokens'),
-                                        'output_tokens': usage.get('output_tokens'),
-                                        'request_id': completed.get('id', ''), 'model': model,
-                                        'billing': 'chatgpt_plan'}}
+        result_usage = {'input_tokens': usage.get('input_tokens'), 'output_tokens': usage.get('output_tokens'),
+                        'request_id': completed.get('id', ''), 'model': model, 'billing': 'chatgpt_plan'}
+        if web_research:
+            result_usage.update(_web_evidence(parts, annotations, searched))
+        return {'body': body, 'usage': result_usage}
     raise PlanError('A transmissão terminou antes de confirmar a entrega.', uncertain=True)
 
 
-def generate(model, instructions, prompt, *, owner_id):
+def generate(model, instructions, prompt, *, owner_id, web_research=False):
     if type(owner_id) is not int or owner_id < 1:
         raise PlanError('O plano ChatGPT não está autorizado para esta conta.')
     token = _access_token(owner_id=owner_id)
@@ -498,11 +576,18 @@ def generate(model, instructions, prompt, *, owner_id):
         model = DEFAULT_MODEL if DEFAULT_MODEL in choices else choices[0]
     payload = {'model': model, 'instructions': instructions, 'input': [{'role': 'user', 'content': prompt}],
                'store': False, 'stream': True}
+    if web_research:
+        payload['tools'] = [{'type': 'web_search'}]
     try:
         with _http('POST', RESOURCE + '/responses', uncertain=True, stream=True, json=payload,
                    headers={'Authorization': f'Bearer {token}', 'Accept': 'text/event-stream'}) as response:
             if response.status_code != 200:
                 raise _inference_error(response.status_code, _object(response), uncertain=response.status_code >= 500)
-            return _stream_response(response, model)
+            return _stream_response(response, model, web_research=web_research)
+    except PlanError as exc:
+        if web_research and exc.code == 'subscription_sharing_unsupported_capability':
+            raise PlanError('O modelo ou a conta não aceitou a pesquisa pública. Use fontes verificadas e cadastradas no escritório.',
+                            uncertain=exc.uncertain, code=WEB_RESEARCH_UNAVAILABLE) from None
+        raise
     except (requests.RequestException, ValueError, TypeError, AttributeError):
         raise PlanError('A transmissão do plano ChatGPT foi interrompida.', uncertain=True) from None

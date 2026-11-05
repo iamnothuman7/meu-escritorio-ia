@@ -10,6 +10,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import close_old_connections
 from django.utils import timezone
 
+from office.instagram import process_one_publication, recover_interrupted_publications
 from office.models import Event, Run, SystemState, Task, WorkerLease
 from office.services import process_one, schedule_due
 
@@ -69,6 +70,7 @@ class Command(BaseCommand):
             owner = f"{socket.gethostname()}:{os.getpid()}"
             WorkerLease.objects.update_or_create(pk=1, defaults={"owner": owner, "heartbeat": timezone.now()})
             SystemState.objects.get_or_create(pk=1)
+            recover_interrupted_publications()
             # A prior process exited while running. Do not blindly repeat a potentially consumed request.
             for task in Task.objects.filter(status="running"):
                 Task.objects.filter(pk=task.pk, status="running").update(status="blocked", updated_at=timezone.now())
@@ -84,7 +86,7 @@ class Command(BaseCommand):
                     WorkerLease.objects.filter(pk=1, owner=owner).update(heartbeat=now)
                     SystemState.objects.filter(pk=1).update(worker_heartbeat=now)
                     schedule_due(now)
-                    worked = process_one()
+                    worked = process_one_publication() or process_one()
                     if options["once"]:
                         break
                     if not worked:
