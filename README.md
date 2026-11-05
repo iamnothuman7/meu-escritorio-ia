@@ -40,7 +40,9 @@ Cada nova conta começa no modo local. Em **Configurações → Conexão de IA**
 
 Para a instalação própria do proprietário, `python scripts/connect-chatgpt.py login` abre o consentimento oficial no navegador. No VPS, execute `python scripts/connect-chatgpt.py import --owner ID` como o usuário do serviço e envie o arquivo de sessão protegido pela entrada padrão do SSH. Preserve apenas a sessão ativa no VPS. Em **Configurações → Conexão de IA**, selecione **Plano ChatGPT** e autorize o espaço. A execução usa o catálogo da conta. O limite local diário por proprietário separa 12 chamadas para rotinas e 12 para tarefas avulsas. A cota do ChatGPT se aplica a todas as chamadas. [Guia oficial de instalação em VM própria](https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms)
 
-Instagram, e-mail, Telegram, Google, Notion e publicação remota não estão conectados nesta versão. Conteúdo é preparado para revisão e publicação manual. Agentes de desenvolvimento produzem planos e código como entrega; não executam shell, alteram projetos ou implantam em produção.
+Em **Configurações → Identidade**, defina as cores das artes da Luma para cada empresa. **Conexão de IA → Arte da Luma** oferece montagem de JPEG com a marca e, com uma chave e autorização de cobrança, geração pela OpenAI API.
+
+Em **Configurações → Instagram**, conecte o token oficial de um perfil profissional por empresa. **Aprovar e publicar** envia o JPEG e a legenda revisados à fila de publicação no feed. Use as instruções do painel para renovar o token da Meta. E-mail, Telegram, Google e Notion dependem de conectores adicionais. Agentes de desenvolvimento produzem planos e código como entrega.
 
 Em **Trabalho → Rotinas**, ative a equipe para agendar a primeira rodada de oito entregas. A rotina de marketing roda a cada seis horas e mantém até quatro rascunhos na fila. As demais rodam diariamente e aguardam a revisão anterior. O executor funciona enquanto o computador ou servidor da instalação estiver ligado.
 

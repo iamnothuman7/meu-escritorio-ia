@@ -23,10 +23,10 @@
     <div class="prose">
       <ol>
         <li>Use uma conta profissional do Instagram, do tipo <strong>Empresa</strong> ou <strong>Criador</strong>. Se a conta for pessoal, altere o tipo nas configurações do Instagram. <a href="https://help.instagram.com/502981923235522" target="_blank" rel="noopener noreferrer">Ajuda do Instagram sobre contas profissionais</a></li>
-        <li>Abra o <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">painel de apps da Meta</a> e crie ou selecione seu app. Escolha o caso de uso do Instagram para gerenciar conteúdo. No painel, abra <strong>API setup with Instagram login</strong>.</li>
+        <li>No <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">painel de apps da Meta</a>, crie um app. Se o assistente pedir o caso de uso e o tipo, selecione <strong>Other</strong> e <strong>Business</strong>. No app, abra <strong>Instagram → Set up → API setup with Instagram login</strong>. <a href="https://developers.facebook.com/documentation/instagram-platform/create-an-instagram-app" target="_blank" rel="noopener noreferrer">Guia de criação da Meta</a></li>
         <li>Autorize as permissões <code>instagram_business_basic</code> e <code>instagram_business_content_publish</code>. Se a Meta pedir um testador, adicione a conta em <strong>App roles</strong> e aceite o convite na conta profissional do Instagram. <a href="https://www.postman.com/meta/instagram/folder/1z5vxzu/instagram-api-with-instagram-login" target="_blank" rel="noopener noreferrer">Permissões na documentação oficial da Meta</a></li>
-        <li>Em <strong>Generate access tokens</strong>, adicione a conta profissional e escolha <strong>Generate token</strong>. Autorize o acesso ao perfil e à publicação. Copie o token gerado. <a href="https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/" target="_blank" rel="noopener noreferrer">Guia do Instagram Login da Meta</a></li>
-        <li>Cole o token no campo abaixo e salve. O Nabio Office verifica a conta e a permissão de publicação. O ID numérico é opcional e serve para conferir o destino. Se o token expirar, gere outro no painel da Meta e substitua aqui.</li>
+        <li>Em <strong>Generate access tokens</strong>, clique em <strong>Add account</strong>, entre no perfil profissional e aceite a autorização. Clique em <strong>Generate token</strong> ao lado do perfil. <a href="https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/get-started" target="_blank" rel="noopener noreferrer">Guia de conexão da Meta</a></li>
+        <li>Cole o token no campo abaixo e salve. Confira o <strong>@perfil</strong> confirmado. O ID numérico é opcional e ajuda a conferir o destino. O token gerado pelo painel vale 60 dias. Gere outro antes do vencimento e substitua aqui.</li>
       </ol>
       <p class="muted">Se você atender contas de terceiros por um mesmo app da Meta, confira os requisitos de acesso avançado e análise de permissões. <a href="https://developers.facebook.com/docs/app-review/" target="_blank" rel="noopener noreferrer">Análise de apps da Meta</a></p>
     </div>
@@ -71,7 +71,7 @@
         <li>Na fila de aprovações, confira a foto, a legenda e o perfil de destino.</li>
         <li>Escolha <strong>Aprovar e publicar</strong> para enviar a publicação à fila. Acompanhe o resultado no escritório.</li>
       </ol>
-      <p class="muted">A integração publica uma foto por vez no feed após a aprovação. <a href="https://developers.facebook.com/docs/instagram-platform/content-publishing/" target="_blank" rel="noopener noreferrer">Publicação de conteúdo na documentação da Meta</a></p>
+      <p class="muted">A integração publica uma foto por vez no feed após a aprovação. <a href="https://developers.facebook.com/documentation/instagram-platform/content-publishing" target="_blank" rel="noopener noreferrer">Publicação de conteúdo na documentação da Meta</a></p>
     </div>
   </details>
 </section>

@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
 
 from . import credentials, providers
-from .models import Approval, Delivery, DeliveryImage, Event, SystemState, Workspace
+from .models import Approval, Delivery, DeliveryImage, Event, InstagramPublication, SystemState
 
 IMAGE_MODEL = "gpt-image-2"
 MAX_IMAGE_BYTES = 1_600_000
@@ -196,14 +196,68 @@ def attach_existing_image(delivery, data, *, expected_version, generation_id=Non
     return image
 
 
+@transaction.atomic
+def refresh_brand_image(delivery, *, expected_version):
+    """Recompose a pending brand image without changing its caption or calling a provider."""
+    from . import brand_art
+    from .services import delivery_hash
+
+    delivery = _locked_delivery(delivery.pk, expected_version)
+    delivery.clean()
+    _check_workspace(delivery.workspace)
+    if delivery.kind != "content" or not delivery.task.agent or delivery.task.agent.slug != "luma":
+        raise ValidationError("A revisão de arte se aplica a entregas de conteúdo da Luma.")
+    if (delivery.task.status != "review" or delivery.approvals.filter(status="approved").exists()
+            or InstagramPublication.objects.filter(delivery=delivery).exists()):
+        raise ValidationError("A arte só pode ser atualizada enquanto a entrega estiver pendente e sem publicação.")
+    image = DeliveryImage.objects.filter(delivery=delivery, status="ready", mode="brand").defer("data").first()
+    if not image:
+        raise ValidationError("A entrega precisa ter uma arte da marca pronta para revisar.")
+    current_hash = delivery_hash(delivery, verify_image=True)
+    pending = delivery.approvals.filter(status="pending", payload_hash=current_hash,
+                                       expires_at__gt=timezone.now()).order_by("-pk").first()
+    if not pending:
+        raise ValidationError("Não há uma aprovação pendente válida para a arte atual.")
+
+    data = brand_art.render(delivery)
+    image.sha256 = _jpeg_digest(data)
+    image.data = data
+    image.requested_version = delivery.version
+    image.requested_hash = delivery_hash(delivery, include_image=False)
+    image.error = ""
+    image.finished_at = timezone.now()
+    image.save(update_fields=["sha256", "data", "requested_version", "requested_hash", "error", "finished_at"])
+    Delivery.objects.filter(pk=delivery.pk).update(version=F("version") + 1, updated_at=timezone.now())
+    delivery.refresh_from_db()
+    delivery.approvals.filter(status="pending").update(status="expired")
+    Approval.objects.create(workspace=delivery.workspace, delivery=delivery,
+                            payload_hash=delivery_hash(delivery, verify_image=True), expires_at=pending.expires_at)
+    Event.objects.create(workspace=delivery.workspace, task=delivery.task, kind="image.refreshed",
+                         message="Arte da marca atualizada. A nova versão aguarda revisão.")
+    return image
+
+
 def _prompt(delivery):
+    from .brand_art import _hex_color
+
     workspace = delivery.workspace
+    art = workspace.policy.get("brand_art") if isinstance(workspace.policy, dict) else None
+    colors = []
+    if isinstance(art, dict):
+        for key, label in (("background", "Cor de fundo"), ("details", "Cor dos detalhes")):
+            color = art.get(key)
+            if _hex_color(color) is not None:
+                colors.append(f"{label}: {color.upper()}\n")
+    if not colors and _hex_color(workspace.brand_color) is not None:
+        colors.append(f"Cor de referência: {workspace.brand_color.upper()}\n")
+    palette = "".join(colors)
     return (
         "Crie uma imagem quadrada para acompanhar uma publicação de marketing. "
-        "Use a legenda como referência visual. Evite letras, números e logotipos inventados. "
+        "Use a legenda como referência visual. Evite inserir letras ou números. "
         "A composição deve funcionar também em uma tela pequena.\n"
+        "Não invente nem reproduza logotipos. Reserve espaço para aplicar o arquivo oficial da marca.\n"
         f"Empresa: {workspace.name}\nSegmento: {workspace.segment}\n"
-        f"Cor de referência: {workspace.brand_color}\nTítulo: {delivery.title}\n"
+        f"{palette}Título: {delivery.title}\n"
         f"Trecho da legenda: {delivery.body[:1800]}"
     )
 

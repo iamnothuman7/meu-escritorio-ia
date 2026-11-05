@@ -9,8 +9,8 @@ from django.test import Client, TestCase
 from django.utils import timezone
 from PIL import Image
 
-from office import image_art, providers, services
-from office.models import Approval, Delivery, DeliveryImage, Task
+from office import brand_art, image_art, providers, services
+from office.models import Approval, Delivery, DeliveryImage, InstagramPublication, Task
 
 
 def jpeg(color="white"):
@@ -73,6 +73,23 @@ class DeliveryImageTests(TestCase):
         current = delivery.approvals.get(status="pending")
         self.assertEqual(services.approve_delivery(delivery, "approve", current.payload_hash).status, "approved")
 
+    def test_brand_background_and_details_apply_only_to_the_configured_workspace(self):
+        other = services.bootstrap_workspace(self.owner, name=self.workspace.name)
+        self.workspace.policy = {"brand_art": {"background": "#FF751F", "details": "#FFFFFF"}}
+        self.workspace.save(update_fields=["policy"])
+
+        with Image.open(BytesIO(brand_art.render(self.caption()))) as picture:
+            self.assertEqual(picture.size, (1080, 1080))
+            self.assertEqual(picture.format, "JPEG")
+            for actual, expected in zip(picture.getpixel((20, 20)), (255, 117, 31)):
+                self.assertAlmostEqual(actual, expected, delta=3)
+            for actual, expected in zip(picture.getpixel((116, 223)), (255, 255, 255)):
+                self.assertAlmostEqual(actual, expected, delta=9)
+
+        with Image.open(BytesIO(brand_art.render(self.caption(other)))) as picture:
+            for actual, expected in zip(picture.getpixel((20, 20)), (11, 16, 32)):
+                self.assertAlmostEqual(actual, expected, delta=3)
+
     def test_changed_caption_does_not_generate_from_a_stale_request(self):
         delivery = self.caption()
         asset = image_art.request_generation(delivery, expected_version=1)
@@ -84,6 +101,89 @@ class DeliveryImageTests(TestCase):
         asset.refresh_from_db()
         self.assertEqual(asset.status, "failed")
         self.assertIsNone(asset.data)
+
+    def test_refresh_brand_image_preserves_caption_and_rebinds_pending_approval(self):
+        delivery = self.caption()
+        previous_image = image_art.attach_existing_image(delivery, jpeg(), expected_version=1)
+        delivery.refresh_from_db()
+        previous_approval = delivery.approvals.get(status="pending")
+        body, title, version = delivery.body, delivery.title, delivery.version
+        self.workspace.policy = {"brand_art": {"background": "#FF751F", "details": "#FFFFFF"}}
+        self.workspace.save(update_fields=["policy"])
+
+        with patch("office.image_art.credentials.load_api_key") as key, patch("office.image_art.providers._post") as post:
+            image = image_art.refresh_brand_image(delivery, expected_version=version)
+        key.assert_not_called()
+        post.assert_not_called()
+
+        delivery.refresh_from_db()
+        previous_approval.refresh_from_db()
+        self.assertEqual(image.pk, previous_image.pk)
+        self.assertNotEqual(image.sha256, previous_image.sha256)
+        self.assertEqual(delivery.version, version + 1)
+        self.assertEqual((delivery.body, delivery.title), (body, title))
+        self.assertEqual(delivery.task.status, "review")
+        self.assertEqual(previous_approval.status, "expired")
+        current = delivery.approvals.get(status="pending")
+        self.assertEqual(current.expires_at, previous_approval.expires_at)
+        self.assertNotEqual(current.payload_hash, previous_approval.payload_hash)
+        self.assertEqual(current.payload_hash, services.delivery_hash(delivery, verify_image=True))
+        self.assertFalse(InstagramPublication.objects.filter(delivery=delivery).exists())
+        with Image.open(BytesIO(image.data)) as picture:
+            self.assertEqual(picture.size, (1080, 1080))
+            for actual, expected in zip(picture.getpixel((20, 20)), (255, 117, 31)):
+                self.assertAlmostEqual(actual, expected, delta=3)
+
+    def test_refresh_rejects_approved_or_instagram_queued_art(self):
+        for case in ("approved", "publication"):
+            with self.subTest(case=case):
+                delivery = self.caption()
+                image = image_art.attach_existing_image(delivery, jpeg(), expected_version=1)
+                delivery.refresh_from_db()
+                approval = delivery.approvals.get(status="pending")
+                if case == "approved":
+                    services.approve_delivery(delivery, "approve", approval.payload_hash)
+                    Task.objects.filter(pk=delivery.task_id).update(status="review")
+                else:
+                    InstagramPublication.objects.create(
+                        workspace=delivery.workspace, delivery=delivery, approval=approval,
+                        approved_hash=approval.payload_hash, image_sha256=image.sha256,
+                        account_id="1234", account_username="qa_only", caption=delivery.body,
+                    )
+                with patch("office.brand_art.render") as render:
+                    with self.assertRaisesMessage(ValidationError, "pendente e sem publicação"):
+                        image_art.refresh_brand_image(delivery, expected_version=delivery.version)
+                render.assert_not_called()
+                delivery.refresh_from_db()
+                self.assertEqual(delivery.version, 2)
+
+    def test_refresh_rejects_stale_version_and_leaves_old_approval_on_invalid_jpeg(self):
+        delivery = self.caption()
+        original = image_art.attach_existing_image(delivery, jpeg(), expected_version=1)
+        delivery.refresh_from_db()
+        pending = delivery.approvals.get(status="pending")
+        with patch("office.brand_art.render", return_value=b"invalid") as render:
+            with self.assertRaisesMessage(ValidationError, "entrega mudou"):
+                image_art.refresh_brand_image(delivery, expected_version=1)
+            render.assert_not_called()
+            with self.assertRaises(ValidationError):
+                image_art.refresh_brand_image(delivery, expected_version=2)
+        delivery.refresh_from_db()
+        self.assertEqual(delivery.version, 2)
+        self.assertEqual(delivery.generated_image.sha256, original.sha256)
+        self.assertEqual(delivery.approvals.get(status="pending").pk, pending.pk)
+
+    def test_openai_prompt_uses_valid_brand_palette_and_keeps_logo_space(self):
+        delivery = self.caption()
+        delivery.workspace.policy = {"brand_art": {"background": "#ff751f", "details": "#ffffff"}}
+        prompt = image_art._prompt(delivery)
+        self.assertIn("Cor de fundo: #FF751F", prompt)
+        self.assertIn("Cor dos detalhes: #FFFFFF", prompt)
+        self.assertIn("Não invente nem reproduza logotipos", prompt)
+        delivery.workspace.policy = {"brand_art": {"background": "invalid color", "details": None}}
+        prompt = image_art._prompt(delivery)
+        self.assertNotIn("invalid color", prompt)
+        self.assertIn(f"Cor de referência: {delivery.workspace.brand_color}", prompt)
 
     def test_stored_image_bytes_are_verified_when_approving(self):
         delivery = self.caption()

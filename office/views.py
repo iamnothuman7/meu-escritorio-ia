@@ -472,6 +472,11 @@ def settings_action(request):
             name=request.POST.get('name','').strip()[:120]
             color=request.POST.get('brand_color','#36b6a1')
             if not name or not re.fullmatch(r'#[0-9a-fA-F]{6}',color): raise ValueError('Nome e cor são obrigatórios.')
+            if 'art_background' in request.POST:
+                background=request.POST.get('art_background','').strip().upper()
+                details=request.POST.get('art_details','').strip().upper() or '#FFFFFF'
+                if (background and not re.fullmatch(r'#[0-9A-F]{6}',background)) or not re.fullmatch(r'#[0-9A-F]{6}',details):
+                    raise ValueError('Informe as cores das artes no formato #RRGGBB.')
             if action=='new_workspace':
                 w=services.bootstrap_workspace(request.user,name=name)
                 request.session['workspace_id']=str(w.pk)
@@ -479,6 +484,12 @@ def settings_action(request):
             w.segment=request.POST.get('segment','')[:120]
             w.description=request.POST.get('description','')[:12000]
             w.brand_color=color
+            if 'art_background' in request.POST:
+                w.policy={**w.policy}
+                if background:
+                    w.policy['brand_art']={'background':background,'details':details}
+                else:
+                    w.policy.pop('brand_art',None)
             if request.FILES.get('logo'):
                 file=request.FILES['logo']
                 # Accept only raster signatures; never render uploaded SVG/HTML.
