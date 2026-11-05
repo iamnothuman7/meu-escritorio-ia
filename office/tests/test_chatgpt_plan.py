@@ -128,6 +128,20 @@ class ChatGPTPlanTests(SimpleTestCase):
             plan._stream_response(response, 'gpt-6.1-sol')
         self.assertTrue(failure.exception.uncertain)
 
+    def test_stream_accepts_text_events_with_metadata_only_completion(self):
+        response = mock_response({})
+        events = [
+            {'type': 'response.output_text.delta', 'output_index': 1, 'content_index': 0, 'delta': 'Pri'},
+            {'type': 'response.output_text.delta', 'output_index': 1, 'content_index': 0, 'delta': 'meiro'},
+            {'type': 'response.output_text.done', 'output_index': 1, 'content_index': 0, 'text': 'Primeiro'},
+            {'type': 'response.output_item.done', 'output_index': 2, 'item': {
+                'type': 'message', 'content': [{'type': 'output_text', 'text': 'Segundo'}],
+            }},
+            {'type': 'response.completed', 'response': {'status': 'completed', 'output': []}},
+        ]
+        response.iter_lines.return_value = [line for event in events for line in (b'data: ' + json.dumps(event).encode(), b'')]
+        self.assertEqual(plan._stream_response(response, 'gpt-6.1-sol')['body'], 'Primeiro\nSegundo')
+
     def test_stream_quota_failure_exposes_code_and_sanitizes_provider_text(self):
         response = mock_response({})
         event = {'type': 'response.failed', 'response': {'error': {

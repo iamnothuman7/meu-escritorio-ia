@@ -434,6 +434,7 @@ def _inference_error(status_code, payload, *, uncertain=False):
 def _stream_response(response, model):
     data_lines = []
     received = 0
+    text_parts = {}
     for line in response.iter_lines(chunk_size=1024):
         received += len(line)
         if received > 4_000_000:
@@ -447,16 +448,33 @@ def _stream_response(response, model):
         except ValueError:
             raise PlanError('A OpenAI retornou um evento inválido.', uncertain=True) from None
         data_lines.clear()
-        if event.get('type') in ('response.failed', 'response.incomplete', 'error'):
+        kind = event.get('type')
+        if kind in ('response.failed', 'response.incomplete', 'error'):
             raise _inference_error(200, event, uncertain=True)
-        if event.get('type') != 'response.completed':
+        if kind in ('response.output_text.delta', 'response.output_text.done'):
+            key = (event.get('output_index', 0), event.get('content_index', 0))
+            if kind == 'response.output_text.delta' and isinstance(event.get('delta'), str):
+                text_parts.setdefault(key, []).append(event['delta'])
+            elif kind == 'response.output_text.done' and isinstance(event.get('text'), str):
+                text_parts[key] = [event['text']]
+            continue
+        if kind == 'response.output_item.done':
+            item = event.get('item') or {}
+            if item.get('type') == 'message':
+                for index, part in enumerate(item.get('content') or []):
+                    if part.get('type') == 'output_text' and isinstance(part.get('text'), str):
+                        text_parts[(event.get('output_index', 0), index)] = [part['text']]
+            continue
+        if kind != 'response.completed':
             continue
         completed = event.get('response') or {}
         if completed.get('status') not in (None, 'completed'):
             raise PlanError('A OpenAI não confirmou uma resposta concluída.', uncertain=True)
-        body = '\n'.join(part.get('text', '') for item in completed.get('output', [])
+        body = '\n'.join(part.get('text', '') for item in completed.get('output') or []
                          if item.get('type') == 'message' for part in item.get('content', [])
                          if part.get('type') == 'output_text')
+        if not body.strip():
+            body = '\n'.join(''.join(text_parts[key]) for key in sorted(text_parts))
         if not body.strip():
             raise PlanError('O plano ChatGPT não devolveu texto para revisão.', uncertain=True)
         usage = completed.get('usage') or {}
