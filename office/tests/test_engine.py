@@ -71,6 +71,26 @@ class EngineTests(TestCase):
         task.refresh_from_db()
         self.assertEqual(task.status, "blocked")
 
+    def test_chatgpt_routine_calls_leave_room_for_a_manual_task(self):
+        self.workspace.ai_mode = "chatgpt"
+        self.workspace.ai_model = "modelo-da-conta"
+        self.workspace.policy = {"chatgpt_confirmed": True}
+        self.workspace.save()
+        routine = self.other.routine_set.get(agent__slug="luma")
+        scheduled = self.task(workspace=self.other, agent=routine.agent)
+        RoutineOccurrence.objects.create(routine=routine, task=scheduled, scheduled_for=timezone.now())
+        Run.objects.create(task=scheduled, provider="chatgpt", status="completed", usage={"provider_called": True})
+        manual = queue_task(self.task())
+        next_manual = queue_task(self.task())
+        with patch("office.services.PLAN_DAILY_CALLS", 1), patch(
+            "office.chatgpt_plan.status", return_value={"connected": True, "owner_id": self.owner.pk},
+        ), patch("office.chatgpt_plan.generate", return_value={"body": "Rascunho", "usage": {}}) as generate:
+            process_one()
+            process_one()
+        generate.assert_called_once()
+        self.assertTrue(manual.deliveries.exists())
+        self.assertIn("tarefas avulsas", next_manual.runs.get().error)
+
     def test_cross_workspace_agent_rejected(self):
         with self.assertRaises(ValidationError):
             self.task(agent=self.other.agents.first())

@@ -258,8 +258,11 @@ def _check_plan_quota(task, run, prompt):
                                started_at__date=timezone.localdate(), usage__provider_called=True)
     if calls.filter(usage__provider_error=PLAN_QUOTA_ERROR).exists():
         raise providers.ProviderError("O ChatGPT informou que a cota do plano está esgotada. As chamadas ficam suspensas até o próximo dia.")
-    if calls.count() >= PLAN_DAILY_CALLS:
-        raise providers.ProviderError("Limite diário local de chamadas do ChatGPT atingido.")
+    routine_task = task.routineoccurrence_set.exists()
+    category_calls = calls.filter(task__routineoccurrence__isnull=not routine_task).distinct()
+    if category_calls.count() >= PLAN_DAILY_CALLS:
+        category = "rotinas" if routine_task else "tarefas avulsas"
+        raise providers.ProviderError(f"Limite diário do Nabio Office para {category} atingido. O limite renova à meia-noite de Fortaleza.")
 
 
 def _context(task):

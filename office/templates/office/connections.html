@@ -63,7 +63,7 @@
       <div class="field"><label>Modelo<input name="ai_model" value="{{ w.ai_model }}" maxlength="160" placeholder="{% if plan.connected %}Automático para o plano ChatGPT{% else %}ID do modelo no provedor{% endif %}"></label></div>
     </div>
     {% if plan.connected %}<label class="checkbox"><input type="checkbox" name="plan_confirmed" {% if w.policy.chatgpt_confirmed %}checked{% endif %}>Autorizo o uso do meu plano e o envio do contexto necessário desta empresa ao ChatGPT.</label>
-    <p class="muted">O Nabio Office limita o plano a 12 chamadas por dia, somadas entre suas empresas.</p>{% endif %}
+    <p class="muted">O Nabio Office permite até 12 chamadas por dia para rotinas e outras 12 para tarefas avulsas, somadas entre suas empresas. A cota do ChatGPT vale para ambas.</p>{% endif %}
     <details {% if w.ai_mode == 'openai' or w.ai_mode == 'claude' %}open{% endif %}>
       <summary>Limites para OpenAI API e Claude API</summary>
       <p class="muted">Para usar uma chave, informe os preços do modelo e o valor máximo que você autoriza para esta empresa.</p>
