@@ -119,7 +119,8 @@ def context(request, page):
     state, _ = SystemState.objects.get_or_create(pk=1)
     heartbeat = state.worker_heartbeat
     worker_online = bool(heartbeat and heartbeat > timezone.now() - timedelta(seconds=30))
-    return {'w':w,'workspaces':Workspace.objects.filter(owner=request.user),'agents':agents,'all_agents':agents,'page':page,'pending_count':Approval.objects.filter(workspace=w,status='pending').count(),'state':state,'worker_online':worker_online,'now':timezone.localtime(),'offline':w.ai_mode == 'offline','hosted':os.environ.get('NABI_HTTPS')=='1'}
+    is_htmx=request.headers.get('HX-Request')=='true' and request.headers.get('HX-History-Restore-Request')!='true'
+    return {'w':w,'workspaces':Workspace.objects.filter(owner=request.user),'agents':agents,'all_agents':agents,'page':page,'pending_count':Approval.objects.filter(workspace=w,status='pending').count(),'state':state,'worker_online':worker_online,'now':timezone.localtime(),'offline':w.ai_mode == 'offline','hosted':os.environ.get('NABI_HTTPS')=='1','is_htmx':is_htmx,'base_template':'office/shell.html' if is_htmx else 'office/base.html'}
 
 
 @login_required

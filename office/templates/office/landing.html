@@ -27,10 +27,13 @@
     </div>
   </header>
   <main id="conteudo">
-    <section class="hero section-shell" aria-labelledby="hero-title">
+    <section class="hero section-shell" aria-labelledby="hero-title" data-effects-hero>
+      <div class="hero-atmosphere" aria-hidden="true"><span class="aurora-glow aurora-purple"></span><span class="aurora-glow aurora-cyan"></span><span class="aurora-ribbon"></span></div>
+      <canvas class="hero-particles" aria-hidden="true"></canvas>
+      <svg class="energy-stream" viewBox="0 0 1200 640" fill="none" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="energy-color" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7C3AED" stop-opacity="0"/><stop offset=".45" stop-color="#a578ff"/><stop offset=".75" stop-color="#06B6D4"/><stop offset="1" stop-color="#06B6D4" stop-opacity="0"/></linearGradient></defs><path class="energy-track" d="M310 570C670 620 590 35 1030 73S1230 460 700 473"/><path class="energy-pulse" pathLength="100" d="M310 570C670 620 590 35 1030 73S1230 460 700 473"/><path class="energy-track energy-track-two" d="M470 620C1140 430 370 135 940 1"/><path class="energy-pulse energy-pulse-two" pathLength="100" d="M470 620C1140 430 370 135 940 1"/></svg>
       <div class="hero-copy">
         <p class="eyebrow"><span class="tiny-star">✦</span> SEU ESCRITÓRIO DE INTELIGÊNCIA ARTIFICIAL</p>
-        <h1 id="hero-title">Sua visão.<br>Uma equipe inteira<br><span>para fazer acontecer.</span></h1>
+        <h1 id="hero-title">Sua visão.<br>Uma equipe inteira<br><span class="hero-gradient">para fazer acontecer.</span></h1>
         <p class="hero-description">Transforme ideias em trabalho organizado. Uma equipe de agentes para cuidar do marketing, comercial, financeiro e projetos — com você no comando.</p>
         <div class="hero-actions">
           <a class="button primary" href="{% if request.user.is_authenticated %}/app/{% else %}/login/{% endif %}">Acessar meu escritório {% icon 'arrow' 18 %}</a>
@@ -39,6 +42,7 @@
         <p class="hero-footnote">{% icon 'shield' 14 %} Sua direção. Seu contexto. Cada entrega sob sua revisão.</p>
       </div>
       <div class="hero-stage" aria-label="Ilustração do escritório e de seus agentes">
+        <div class="stage-lightfield" aria-hidden="true"></div>
         <div class="stage-orbit orbit-one"></div><div class="stage-orbit orbit-two"></div>
         <span class="stage-spark spark-one">✦</span><span class="stage-spark spark-two">✦</span>
         <div class="stage-caption"><span class="caption-line"></span> IDEIAS ENCONTRAM EXECUÇÃO</div>

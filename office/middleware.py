@@ -1,9 +1,12 @@
 import hashlib
 import ipaddress
+import json
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse
+from django.utils.cache import patch_vary_headers
 
 
 def trusted_proxy(request):
@@ -39,6 +42,20 @@ class LocalSecurityMiddleware:
             response['Retry-After'] = str(settings.AUTH_POST_WINDOW_SECONDS)
         else:
             response = self.get_response(request)
+        if request.headers.get('HX-Request') == 'true' and response.status_code in (301,302,303,307,308):
+            location=response.get('Location','')
+            parsed=urlsplit(location)
+            safe=location.startswith('/') and not location.startswith('//') and not parsed.scheme and not parsed.netloc and '\\' not in location
+            response.status_code=200 if safe else 400
+            response.content=b'' if safe else b'Invalid navigation destination.'
+            if 'Location' in response:
+                del response['Location']
+            if safe:
+                if parsed.path in ('/login/','/setup/','/'):
+                    response['HX-Redirect']=location
+                else:
+                    response['HX-Location']=json.dumps({'path':location,'target':'#app-shell','select':'#app-shell','swap':'outerHTML'})
+        patch_vary_headers(response,('HX-Request','HX-History-Restore-Request'))
         response['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         response['Referrer-Policy'] = 'same-origin'
         if not request.path.startswith('/static/'):

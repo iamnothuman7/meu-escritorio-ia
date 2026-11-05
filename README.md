@@ -62,3 +62,9 @@ A apresentação pública está em `/`, o login em `/login/` e o escritório pro
 O manifesto e service worker preparam instalação PWA em navegadores compatíveis. Use a opção de instalar/adicionar à tela inicial do navegador. A interface funciona em tela independente, mas tarefas e alterações continuam exigindo conexão com o servidor. Somente arquivos públicos e a página offline genérica são armazenados no cache; páginas privadas e APIs não são cacheadas.
 
 Na instalação local sem usuário, abra `/setup/` uma vez para criar o administrador. Na hospedagem, a configuração do primeiro administrador é autorizada por link de ativação da instalação; a página pública e o login nunca redirecionam para esse setup.
+
+## Interface dinâmica
+
+A navegação do escritório, os formulários e os filtros usam HTMX servido pelo próprio aplicativo. Tarefas em execução atualizam a entrega a cada 5 segundos; Hoje/Equipe atualizam seus registros a cada 15 segundos. A consulta pausa com a aba oculta, diálogo aberto ou campo em edição, e preserva formulários alterados. Download, backup, saída e autenticação mantêm navegação nativa. O histórico do HTMX não guarda páginas privadas no localStorage. Detalhes e referências oficiais em [HTMX](docs/HTMX.md).
+
+A apresentação e o login incluem animações da identidade visual, reduzidas quando o sistema solicita menos movimento. O canvas ambiental pausa fora da tela e em abas ocultas. Barras de rolagem ficam ocultas, preservando rolagem por mouse, toque e teclado.
