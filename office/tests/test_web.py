@@ -135,7 +135,7 @@ class OfficeWebTests(TestCase):
             response = visitor.post('/login/', {
                 'username': 'owner', 'password': 'Local-office-test7!', 'next': next_url,
             })
-            self.assertRedirects(response, '/app/', fetch_redirect_response=False)
+            self.assertRedirects(response, '/escritorios/', fetch_redirect_response=False)
 
     def test_session_tampering_falls_back_to_owned_workspace(self):
         self.select_workspace(self.foreign)
@@ -387,31 +387,26 @@ class OfficeWebTests(TestCase):
         })
         self.assertEqual(Lead.objects.get(workspace=self.workspace, company='Fonte informada').source_url, 'https://example.com/empresa')
 
-    def test_public_landing_does_not_expose_authenticated_company_context(self):
+    def test_public_login_does_not_expose_company_context(self):
         Task.objects.create(workspace=self.workspace, title='Tarefa confidencial A', objective='Restrito')
-        visitor = Client()
-        for client in [visitor, self.client]:
-            with self.subTest(authenticated=client is self.client):
-                response = client.get('/')
-                self.assertEqual(response.status_code, 200)
-                self.assertContains(response, 'Nabio Office')
-                self.assertContains(response, 'href="/app/"' if client is self.client else 'href="/login/"')
-                self.assertNotContains(response, '/setup/')
-                self.assertNotContains(response, 'Empresa A')
-                self.assertNotContains(response, 'Empresa B')
-                self.assertNotContains(response, 'Empresa alheia secreta')
-                self.assertNotContains(response, 'Tarefa confidencial A')
+        response = Client().get('/')
+        self.assertContains(response, 'Nabio Office')
+        self.assertContains(response, 'name="username"')
+        self.assertNotContains(response, '/setup/')
+        for private_text in ('Empresa A', 'Empresa B', 'Empresa alheia secreta', 'Tarefa confidencial A'):
+            self.assertNotContains(response, private_text)
+        self.assertRedirects(self.client.get('/'), '/escritorios/', fetch_redirect_response=False)
 
 
 class PublicSurfaceTests(TestCase):
     def setUp(self):
         cache.clear()
 
-    def test_landing_and_login_are_public_before_owner_setup(self):
+    def test_login_is_public_on_both_entry_routes_before_owner_setup(self):
         with patch.dict(os.environ, {'NABI_SETUP_TOKEN': 'private-test-token', 'NABI_HTTPS': '1'}):
             landing = self.client.get('/')
             self.assertEqual(landing.status_code, 200)
-            self.assertContains(landing, 'href="/login/"')
+            self.assertContains(landing, 'name="username"')
             self.assertNotContains(landing, 'private-test-token')
             self.assertNotContains(landing, '/setup/')
             login = self.client.get('/login/')

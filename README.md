@@ -57,16 +57,22 @@ Em **Trabalho → Rotinas**, ative a equipe para agendar a primeira rodada de oi
 
 Veja [operação e restauração](docs/OPERACAO.md) e [requisitos implementados e pendências](docs/REQUISITOS.md).
 
-## Entrada pública e aplicativo web
+## Login, escritórios e aplicativo web
 
-A apresentação pública está em `/`, o login em `/login/` e o escritório protegido em `/app/`. O WhatsApp de atendimento é +55 88 99274-5456, com mensagem pré-preenchida. Logo e ícones vetoriais têm fundo transparente, e Inter/Montserrat são servidas localmente.
+O login abre em `/` ou `/login/`. Depois de entrar com e-mail e senha, o usuário escolhe uma das suas empresas em `/escritorios/`. O painel de trabalho está em `/app/`. Contas administrativas continuam com acesso separado em `/administracao/`.
 
 O manifesto e service worker preparam instalação PWA em navegadores compatíveis. Use a opção de instalar/adicionar à tela inicial do navegador. A interface funciona em tela independente, mas tarefas e alterações continuam exigindo conexão com o servidor. Somente arquivos públicos e a página offline genérica são armazenados no cache; páginas privadas e APIs não são cacheadas.
 
 Na instalação sem usuários, a rota `/setup/` cria o primeiro acesso ao escritório. Em hospedagem, essa configuração inicial exige a autorização da instalação. Para habilitar a administração de contas, crie um usuário separado com `python manage.py createsuperuser` e use um e-mail no campo de usuário. Esse login abre `/administracao/`, onde o administrador cadastra contas com e-mail e senha. Cada conta recebe um escritório próprio com os agentes e as rotinas padrão.
 
+## Escritório 3D
+
+A vista `/office-3d/` adapta os avatares e as malhas do [Claw3D](https://github.com/iamlukethedev/Claw3D) à NaBio. A equipe mostra o estado das tarefas reais. O formulário envia para o executor existente da empresa, e as entregas ficam em **Aprovações**. Luma pode receber pedidos de posts com arte e legenda. Radar e Luma podem receber pesquisas em fontes públicas quando habilitadas. O formulário e a lista da equipe funcionam mesmo se o navegador não puder desenhar a cena 3D.
+
+A vista é habilitada por empresa com `python manage.py set_office_studio --workspace ID --owner ID`. Acrescente `--disable` para removê-la do seletor. A configuração do provedor de IA é independente e os tokens ficam no servidor. Veja [código e instruções de compilação da cena](studio3d/README.md).
+
 ## Interface dinâmica
 
 A navegação do escritório, os formulários e os filtros usam HTMX servido pelo próprio aplicativo. Tarefas em execução atualizam a entrega a cada 5 segundos; Hoje/Equipe atualizam seus registros a cada 15 segundos. A consulta pausa com a aba oculta, diálogo aberto ou campo em edição, e preserva formulários alterados. Download, backup, saída e autenticação mantêm navegação nativa. O histórico do HTMX não guarda páginas privadas no localStorage. Detalhes e referências oficiais em [HTMX](docs/HTMX.md).
 
-A apresentação e o login incluem animações da identidade visual, reduzidas quando o sistema solicita menos movimento. O canvas ambiental pausa fora da tela e em abas ocultas. Barras de rolagem ficam ocultas, preservando rolagem por mouse, toque e teclado.
+O login e a cena respeitam a preferência por menos movimento. Barras de rolagem ficam ocultas, preservando rolagem por mouse, toque e teclado.

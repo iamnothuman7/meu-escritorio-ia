@@ -7,13 +7,15 @@ from office import views
 from office.image_views import delivery_image, request_image
 from office.instagram import media as instagram_media
 from office.platform_admin import platform_admin
+from office.studio import office_3d
+from office.studio_api import studio_state, studio_submit
 
 urlpatterns = [
     path('health',views.health),path('setup/',views.setup),
     path('access/', RedirectView.as_view(url='/login/')),
     path('administracao/', platform_admin, name='platform_admin'),
-    path('login/',views.login_route),path('logout/',auth.LogoutView.as_view(next_page='/')),
-    path('',views.landing),path('app/',views.dashboard),
+    path('login/',views.login_route,name='login'),path('logout/',auth.LogoutView.as_view(next_page='/'),name='logout'),
+    path('',views.login_route,name='home'),path('escritorios/',views.office_selector,name='office_selector'),path('app/',views.dashboard),
     path('manifest.webmanifest',views.webmanifest),path('sw.js',views.service_worker),path('offline/',views.offline_page),
     path('favicon.ico',views.favicon),
     path('team/',views.team),path('tasks/',views.tasks),path('tasks/create/',views.create_task),
@@ -24,7 +26,10 @@ urlpatterns = [
     path('deliveries/<int:pk>/image/',delivery_image,name='delivery_image'),
     path('instagram/media/<int:pk>/<str:signature>/',instagram_media,name='instagram_media'),
     path('work/',views.work),path('work/action/',views.work_action),path('settings/',views.settings_view),path('settings/save/',views.settings_action),
-    path('workspace/switch/',views.switch_workspace),path('office/pause/',views.pause),path('logo/<int:pk>/',views.logo),
+    path('workspace/switch/',views.switch_workspace,name='workspace_switch'),path('office/pause/',views.pause),path('logo/<int:pk>/',views.logo),
     path('export/',views.export_data),path('backup/',views.backup_download),path('api/v1/dashboard',views.api_dashboard),
+    path('office-3d/',office_3d,name='office_3d'),
+    path('api/v1/studio/state/',studio_state,name='studio_state'),
+    path('api/v1/studio/tasks/',studio_submit,name='studio_submit'),
     path('static/<path:path>',serve,{'document_root':settings.STATIC_ROOT}),
 ]

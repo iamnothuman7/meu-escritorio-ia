@@ -7,3 +7,5 @@
 *.css text eol=lf
 *.js text eol=lf
 *.html text eol=lf
+# The generated module embeds third-party GLSL source and license text verbatim.
+office/static/office/studio/scene.js linguist-generated=true -whitespace

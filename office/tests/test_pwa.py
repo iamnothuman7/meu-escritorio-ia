@@ -22,7 +22,7 @@ class PublicPwaTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/manifest+json')
         manifest = json.loads(response.content)
-        self.assertEqual(manifest['start_url'], '/app/')
+        self.assertEqual(manifest['start_url'], '/escritorios/')
         self.assertEqual(manifest['scope'], '/')
         self.assertEqual(manifest['display'], 'standalone')
         self.assertEqual(manifest['theme_color'], '#0B1020')
@@ -41,7 +41,7 @@ class PublicPwaTests(TestCase):
             self.assertEqual(struct.unpack('>II', png[16:24]), (expected, expected))
             self.assertIn(png[25], (4, 6), 'Ícones devem preservar canal de transparência.')
 
-    def test_landing_public_and_dashboard_protected(self):
+    def test_login_entry_public_and_dashboard_protected(self):
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'manifest.webmanifest')
@@ -53,14 +53,12 @@ class PublicPwaTests(TestCase):
         self.client.force_login(self.owner)
         self.assertEqual(self.client.get('/app/').status_code, 200)
 
-    def test_login_remains_a_form_for_authenticated_and_anonymous_visitors(self):
-        for authenticated in (False, True):
-            if authenticated:
-                self.client.force_login(self.owner)
-            response = self.client.get('/login/')
-            self.assertEqual(response.status_code, 200)
-            self.assertContains(response, 'name="username"')
-            self.assertContains(response, 'name="password"')
+    def test_login_form_opens_the_office_selector_for_authenticated_visitors(self):
+        response = self.client.get('/login/')
+        self.assertContains(response, 'name="username"')
+        self.assertContains(response, 'name="password"')
+        self.client.force_login(self.owner)
+        self.assertRedirects(self.client.get('/login/'), '/escritorios/', fetch_redirect_response=False)
 
     def test_offline_fallback_is_identical_public_and_has_no_session_data(self):
         anonymous = self.client.get('/offline/')

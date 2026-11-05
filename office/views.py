@@ -10,7 +10,7 @@ from decimal import Decimal, InvalidOperation
 from functools import wraps
 from pathlib import Path
 from xml.sax.saxutils import escape
-from urllib.parse import urlencode
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib import messages
@@ -27,9 +27,11 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.decorators.debug import sensitive_post_parameters
+from django.views.decorators.cache import never_cache
 
 from .models import Agent, Approval, Delivery, Event, FinancialEntry, InstagramPublication, Lead, Project, Routine, Run, Settlement, SystemState, Task, Workspace
 from . import chatgpt_plan, credentials, instagram, services
+from .studio_scope import supports_studio
 
 
 def office_required(view):
@@ -43,24 +45,23 @@ def office_required(view):
 
 
 class OfficeLoginView(LoginView):
+    redirect_authenticated_user = True
+
     def get_success_url(self):
         if self.request.user.is_superuser:
             return reverse('platform_admin')
-        return super().get_success_url()
+        next_url = self.get_redirect_url()
+        if next_url and urlsplit(next_url).path not in ('', '/', '/login/', '/access/'):
+            return next_url
+        return reverse('office_selector')
 
 
 def health(request):
     return JsonResponse({'status': 'ok', 'product': 'Nabio Office'})
 
 
-def landing(request):
-    message='Olá! Conheci o Nabio Office e gostaria de saber como posso usar esse escritório de inteligência artificial na minha empresa. Pode me explicar como funciona?'
-    team=[{'name':name,'role':role,'avatar':i} for i,(name,role) in enumerate([('Atlas','Gestão e coordenação'),('Radar','Prospecção e pesquisa'),('Elo','Comercial e propostas'),('Luma','Marketing e conteúdo'),('Cora','Financeiro e análise'),('Nexo','Projetos e operações')])]
-    return render(request,'office/landing.html',{'whatsapp_url':'https://wa.me/5588992745456?'+urlencode({'text':message}),'team_preview':team})
-
-
 def webmanifest(request):
-    response=JsonResponse({'id':'/','name':'Nabio Office','short_name':'Nabio Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':'/app/','scope':'/','display':'standalone','background_color':'#0B1020','theme_color':'#0B1020','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
+    response=JsonResponse({'id':'/','name':'Nabio Office','short_name':'Nabio Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':reverse('office_selector'),'scope':'/','display':'standalone','background_color':'#0B1020','theme_color':'#0B1020','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
     return response
 
 
@@ -129,6 +130,17 @@ def active_workspace(request):
     return space
 
 
+@office_required
+@never_cache
+def office_selector(request):
+    workspaces = list(Workspace.objects.filter(owner=request.user).order_by('name', 'pk'))
+    if not workspaces:
+        workspaces = [active_workspace(request)]
+    choices = [dict(workspace=workspace, studio_enabled=supports_studio(workspace)) for workspace in workspaces]
+    choices.sort(key=lambda choice: not choice['studio_enabled'])
+    return render(request, 'office/office_select.html', {'office_choices': choices})
+
+
 def context(request, page):
     w = active_workspace(request)
     task_qs = Task.objects.filter(workspace=w)
@@ -140,7 +152,7 @@ def context(request, page):
     heartbeat = state.worker_heartbeat
     worker_online = bool(heartbeat and heartbeat > timezone.now() - timedelta(seconds=30))
     is_htmx=request.headers.get('HX-Request')=='true' and request.headers.get('HX-History-Restore-Request')!='true'
-    return {'w':w,'workspaces':Workspace.objects.filter(owner=request.user),'agents':agents,'all_agents':agents,'page':page,'pending_count':Approval.objects.filter(workspace=w,status='pending',expires_at__gt=timezone.now()).count(),'state':state,'worker_online':worker_online,'now':timezone.localtime(),'offline':w.ai_mode == 'offline','hosted':os.environ.get('NABI_HTTPS')=='1','is_htmx':is_htmx,'base_template':'office/shell.html' if is_htmx else 'office/base.html'}
+    return {'w':w,'workspaces':Workspace.objects.filter(owner=request.user),'agents':agents,'all_agents':agents,'page':page,'pending_count':Approval.objects.filter(workspace=w,status='pending',expires_at__gt=timezone.now()).count(),'state':state,'worker_online':worker_online,'now':timezone.localtime(),'offline':w.ai_mode == 'offline','hosted':os.environ.get('NABI_HTTPS')=='1','is_htmx':is_htmx,'base_template':'office/shell.html' if is_htmx else 'office/base.html','studio_enabled':supports_studio(w)}
 
 
 def attach_research_citations(deliveries):
@@ -587,9 +599,16 @@ def settings_action(request):
 @office_required
 @require_POST
 def switch_workspace(request):
-    w=get_object_or_404(Workspace,pk=request.POST.get('workspace'),owner=request.user)
-    request.session['workspace_id']=str(w.pk)
-    return redirect('/app/')
+    try:
+        workspace_id = int(request.POST.get('workspace', ''))
+    except (TypeError, ValueError):
+        raise Http404 from None
+    workspace = get_object_or_404(Workspace, pk=workspace_id, owner=request.user)
+    open_studio = request.POST.get('destination') == 'studio'
+    if open_studio and not supports_studio(workspace):
+        raise Http404
+    request.session['workspace_id'] = str(workspace.pk)
+    return redirect('office_3d' if open_studio else '/app/')
 
 
 @office_required

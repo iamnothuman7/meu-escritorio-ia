@@ -1,0 +1,81 @@
+{% load static %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+  <meta name="theme-color" content="#15110f">
+  <title>{{ workspace.name }} · Nabio Office</title>
+  <link rel="icon" href="{% static 'office/brand/icon.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'office/brand/icon-192.png' %}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="{% static 'office/studio.css' %}">
+  <script defer src="{% static 'office/pwa.js' %}"></script>
+  <script type="module" src="{% static 'office/studio.js' %}"></script>
+</head>
+<body>
+<a class="skip" href="#studio-main">Pular para o escritório</a>
+<header class="studio-bar">
+  <div class="studio-bar__inner">
+    <a class="office-brand" href="{% url 'office_selector' %}" aria-label="{{ workspace.name }} · trocar de escritório">
+      {% if workspace.logo %}<img class="office-logo" src="/logo/{{ workspace.pk }}/" alt="{{ workspace.name }}">{% else %}<span class="brand-monogram" aria-hidden="true">{{ workspace.name|first }}</span><strong>{{ workspace.name }}</strong>{% endif %}
+      <span class="office-brand__product">NABIO OFFICE</span>
+    </a>
+    <nav class="studio-nav" aria-label="Navegação do escritório">
+      <a class="studio-nav__current" href="{% url 'office_3d' %}" aria-current="page">Escritório 3D</a>
+      <a href="/tasks/">Tarefas</a>
+      <a href="/approvals/">Aprovações <span class="nav-count" id="studio-pending" hidden></span></a>
+      <a href="/app/">Painel</a>
+    </nav>
+    <a class="switch-link" href="{% url 'office_selector' %}">Escritórios <span aria-hidden="true">↗</span></a>
+  </div>
+</header>
+<main class="studio-shell" id="studio-main" data-state-url="{% url 'studio_state' %}" data-submit-url="{% url 'studio_submit' %}" data-workspace-id="{{ workspace.pk }}">
+  <section class="studio-heading" aria-labelledby="studio-title">
+    <div>
+      <p class="eyebrow"><span></span> AMBIENTE DE TRABALHO</p>
+      <h1 id="studio-title">Escritório <em>{{ workspace.name }}</em></h1>
+      <p>Escolha um agente, delegue uma tarefa e revise a entrega.</p>
+    </div>
+    <a href="/settings/" class="provider" id="studio-provider"><span class="provider__lamp"></span><span id="studio-provider-label">{{ workspace.get_ai_mode_display }}</span><span aria-hidden="true">↗</span></a>
+  </section>
+  <div class="studio-grid">
+    <section class="stage panel" aria-label="Vista tridimensional do escritório">
+      <div class="stage__surface" id="studio-scene" aria-hidden="true"></div>
+      <div class="stage__header">
+        <div class="stage-tag"><span aria-hidden="true">◈</span> PLANTA DO ESCRITÓRIO</div>
+        <button type="button" class="scene-reset" id="studio-reset" disabled>Redefinir vista</button>
+      </div>
+      <div id="studio-scene-loading" class="scene-feedback" role="status">Carregando escritório 3D…</div>
+      <noscript><p class="scene-feedback">Ative o JavaScript para visualizar o escritório 3D.</p></noscript>
+      <div class="stage__footer"><span>Interaja com a cena para explorar</span><span>TECNOLOGIA CLAW3D</span></div>
+    </section>
+    <section class="dispatch panel" aria-labelledby="dispatch-title">
+      <div class="dispatch__heading"><span class="dispatch-icon" aria-hidden="true">↗</span><div><p class="eyebrow">DELEGAÇÃO</p><h2 id="dispatch-title">Nova tarefa</h2></div></div>
+      <p class="dispatch__intro">A equipe prepara a entrega e você dá a palavra final.</p>
+      <form id="studio-form" method="post" action="{% url 'studio_submit' %}">
+        {% csrf_token %}
+        <label for="studio-agent">Agente</label>
+        <select id="studio-agent" name="agent_id" required><option value="">Selecione um agente</option></select>
+        <div id="studio-kind-field" hidden>
+          <label for="studio-kind">Tipo de entrega</label>
+          <select id="studio-kind" name="kind" disabled></select>
+        </div>
+        <label for="studio-title-input">Título</label>
+        <input id="studio-title-input" name="title" maxlength="160" required placeholder="Ex.: Campanha de lançamento">
+        <label for="studio-brief">O que você precisa?</label>
+        <textarea id="studio-brief" name="description" maxlength="4000" required rows="4" placeholder="Conte o objetivo e o que espera receber."></textarea>
+        <button type="submit" id="studio-submit" class="primary" disabled>Enviar para o agente <span aria-hidden="true">↗</span></button>
+        <div class="dispatch__result" id="studio-result" role="status" aria-live="polite" hidden></div>
+      </form>
+      <a class="inline-link" href="/approvals/">Abrir entregas para revisão <span aria-hidden="true">→</span></a>
+    </section>
+  </div>
+  <section class="team" aria-labelledby="team-title">
+    <div class="team__heading"><div><p class="eyebrow">EQUIPE</p><h2 id="team-title">Agentes da {{ workspace.name }}</h2></div><a class="inline-link" href="/team/">Ver equipe <span aria-hidden="true">→</span></a></div>
+    <p id="studio-team-message" class="team__message" role="status">Buscando a equipe…</p>
+    <div id="studio-roster" class="team__roster"></div>
+  </section>
+  <footer class="studio-footer"><span>{{ workspace.name }} · Nabio Office</span><a href="/work/">Projetos, leads e rotinas <span aria-hidden="true">↗</span></a></footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,60 @@
+{% load static office_tags %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B1020">
+  <title>Escolher escritório · Nabio Office</title>
+  <link rel="stylesheet" href="{% static 'office/auth.css' %}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="{% static 'office/brand/icon.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'office/brand/icon-192.png' %}">
+  <script defer src="{% static 'office/pwa.js' %}"></script>
+</head>
+<body class="auth-page office-selection">
+  <a class="skip-link" href="#office-options">Pular para os escritórios</a>
+  <div class="office-select-layout">
+    <header class="office-select-header">
+      <a class="auth-brand" href="{% url 'office_selector' %}" aria-label="Nabio Office, escritórios">
+        <span class="auth-brand-mark"><img src="{% static 'office/brand/icon.svg' %}" width="24" height="24" alt=""></span>
+        <span>Nabio Office</span>
+      </a>
+      <div class="office-select-controls">
+        <button type="button" class="office-choice-secondary" data-install hidden>{% icon 'download' 16 %} Instalar</button>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}<button type="submit" class="office-choice-secondary">{% icon 'logout' 16 %} Sair</button>
+        </form>
+      </div>
+    </header>
+    <main id="office-options" class="office-select-main" tabindex="-1">
+      <div class="office-select-intro">
+        <p class="eyebrow">Seus espaços de trabalho</p>
+        <h1>Escolha seu escritório</h1>
+        <p class="access-description">Abra a empresa que você quer acompanhar.</p>
+      </div>
+      <div class="office-choice-grid">
+        {% for choice in office_choices %}
+        <article class="office-choice{% if choice.studio_enabled %} office-choice--studio{% endif %}">
+          <div class="office-choice-heading">
+            <span class="office-choice-icon" aria-hidden="true">{% icon 'grid' 21 %}</span>
+            <span class="office-choice-type">{% if choice.studio_enabled %}Escritório 3D disponível{% else %}Painel{% endif %}</span>
+          </div>
+          <h2>{{ choice.workspace.name }}</h2>
+          {% if choice.workspace.segment %}<p class="access-description">{{ choice.workspace.segment }}</p>{% endif %}
+          <form method="post" action="{% url 'workspace_switch' %}" class="office-choice-actions">
+            {% csrf_token %}
+            <input type="hidden" name="workspace" value="{{ choice.workspace.pk }}">
+            {% if choice.studio_enabled %}
+            <button type="submit" name="destination" value="studio" class="submit-button">Abrir escritório 3D {% icon 'arrow' 17 %}</button>
+            <button type="submit" class="office-choice-secondary">Abrir painel</button>
+            {% else %}
+            <button type="submit" class="submit-button">Abrir escritório {% icon 'arrow' 17 %}</button>
+            {% endif %}
+          </form>
+        </article>
+        {% endfor %}
+      </div>
+    </main>
+  </div>
+</body>
+</html>
