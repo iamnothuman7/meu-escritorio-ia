@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 from django.utils.dateparse import parse_datetime
 
-from . import image_art, providers
+from . import image_art, legal_prospecting, providers
 from .models import (Agent, Approval, Delivery, Event, FinancialEntry, Lead, Project, Routine,
                      RoutineOccurrence, Run, Settlement, SystemState, Task, Workspace)
 
@@ -38,6 +38,7 @@ LOCAL_KINDS = ("summary", "finance", "template")
 PLAN_DAILY_CALLS = 12
 PLAN_INPUT_LIMIT = 24000
 PLAN_QUOTA_ERROR = "subscription_sharing_usage_limit_exceeded"
+LEGAL_DAILY_CALLS = 4
 TEAM_ROUTINES = (
     ("Prioridades do dia", "atlas", "coordination", "Entregue uma agenda prática com até três prioridades, bloqueios e decisões que o responsável precisa tomar.", 1440),
     ("Leitura financeira", "cora", "finance_review", "Compare realizado, valores pendentes e projeção. Mostre riscos e ações de acompanhamento usando apenas os números calculados.", 1440),
@@ -159,6 +160,13 @@ def approve_delivery(delivery, decision, expected_hash):
     changed = Approval.objects.filter(pk=approval.pk, status="pending", payload_hash=current_hash).update(status=decision, decided_at=timezone.now())
     if changed != 1:
         raise ValidationError("Esta aprovação já foi decidida.")
+    if decision == "approved" and delivery.task.kind == legal_prospecting.KIND:
+        candidates = legal_prospecting.candidates_for(delivery)
+        if not candidates:
+            raise ValidationError("Não foi possível confirmar as fontes e a versão do lote. Execute uma nova pesquisa.")
+        added = legal_prospecting.import_candidates(delivery.workspace, candidates)
+        Event.objects.create(workspace=delivery.workspace, task=delivery.task, kind="prospecting.imported",
+                             message=f"{added} novo(s) escritório(s) no Comercial. Duplicados foram preservados sem alteração.")
     delivery.task.status = "completed" if decision == "approved" else "draft"
     delivery.task.save(update_fields=["status", "updated_at"])
     Event.objects.create(workspace=delivery.workspace, task=delivery.task, kind="approval.decided",
@@ -253,20 +261,43 @@ def _budget_reservation(task, run, prompt):
     return max_output, input_price, output_price
 
 
+def _plan_calls(workspace, now=None):
+    return Run.objects.filter(task__workspace__owner_id=workspace.owner_id, provider="chatgpt",
+                              started_at__date=timezone.localdate(now), usage__provider_called=True)
+
+
+def _plan_quota_issue(workspace, kind, scheduled, now=None):
+    calls = _plan_calls(workspace, now)
+    if calls.filter(usage__provider_error=PLAN_QUOTA_ERROR).exists():
+        return "O ChatGPT informou que a cota do plano está esgotada. As chamadas ficam suspensas até o próximo dia."
+    category_calls = calls.filter(task__routineoccurrence__isnull=not scheduled).distinct()
+    if category_calls.count() >= PLAN_DAILY_CALLS:
+        category = "rotinas" if scheduled else "tarefas avulsas"
+        return f"Limite diário do Nabio Office para {category} atingido. O limite renova à meia-noite de Fortaleza."
+    if scheduled and kind == legal_prospecting.KIND and category_calls.filter(task__kind=kind).count() >= LEGAL_DAILY_CALLS:
+        return "Limite diário de buscas do Radar atingido. As buscas voltam à meia-noite de Fortaleza."
+    if scheduled and kind != legal_prospecting.KIND and Routine.objects.filter(
+        workspace__owner_id=workspace.owner_id, workspace__paused=False, workspace__ai_mode="chatgpt",
+        workspace__policy__web_research=True, workspace__policy__chatgpt_confirmed=True,
+        enabled=True, agent__enabled=True, kind=legal_prospecting.KIND,
+    ).exists() and category_calls.exclude(task__kind=legal_prospecting.KIND).count() >= max(0, PLAN_DAILY_CALLS - LEGAL_DAILY_CALLS):
+        return "As chamadas restantes de rotina estão reservadas para as pesquisas do Radar. O limite renova à meia-noite de Fortaleza."
+    return ""
+
+
 def _check_plan_quota(task, run, prompt):
     if not provider_ready(task.workspace):
         raise providers.ProviderError("Conecte o ChatGPT e autorize a geração nas configurações desta empresa.")
     if len((run.instructions_snapshot + prompt).encode("utf-8")) > PLAN_INPUT_LIMIT:
         raise providers.ProviderError("As entradas excedem o limite local de tamanho para o plano ChatGPT.")
-    calls = Run.objects.filter(task__workspace__owner_id=task.workspace.owner_id, provider="chatgpt",
-                               started_at__date=timezone.localdate(), usage__provider_called=True)
-    if calls.filter(usage__provider_error=PLAN_QUOTA_ERROR).exists():
-        raise providers.ProviderError("O ChatGPT informou que a cota do plano está esgotada. As chamadas ficam suspensas até o próximo dia.")
-    routine_task = task.routineoccurrence_set.exists()
-    category_calls = calls.filter(task__routineoccurrence__isnull=not routine_task).distinct()
-    if category_calls.count() >= PLAN_DAILY_CALLS:
-        category = "rotinas" if routine_task else "tarefas avulsas"
-        raise providers.ProviderError(f"Limite diário do Nabio Office para {category} atingido. O limite renova à meia-noite de Fortaleza.")
+    issue = _plan_quota_issue(task.workspace, task.kind, task.routineoccurrence_set.exists())
+    if issue:
+        raise providers.ProviderError(issue)
+
+
+def _legal_research_ready(workspace, agent):
+    return (workspace.ai_mode == "chatgpt" and workspace.policy.get("web_research") is True
+            and agent and agent.enabled and agent.workspace_id == workspace.pk and agent.slug == "radar")
 
 
 def _context(task):
@@ -313,8 +344,11 @@ def process_one(provider=None):
         return False
     task.status = "running"
     instructions = SHARED_INSTRUCTIONS + "\n" + (task.agent.instructions if task.agent else "Prepare a entrega delimitada pelo pedido.")
-    web_research = task.kind == "research"
-    if web_research:
+    legal_search = task.kind == legal_prospecting.KIND
+    web_research = task.kind == "research" or legal_search
+    if legal_search:
+        instructions = legal_prospecting.INSTRUCTIONS
+    elif web_research:
         instructions = (
             "Pesquise fontes públicas sobre o pedido, em português do Brasil. Cite as páginas realmente consultadas "
             "perto de cada fato e separe observação de hipótese. Use só informações públicas de empresas. "
@@ -338,6 +372,10 @@ def process_one(provider=None):
         task.clean()
         if task.agent and not task.agent.enabled:
             raise providers.ProviderError("Agente desativado. Nenhuma chamada realizada.")
+        if legal_search and (not _legal_research_ready(task.workspace, task.agent) or not task.routineoccurrence_set.filter(
+            routine__workspace=task.workspace, routine__kind=legal_prospecting.KIND, routine__enabled=True,
+        ).exists()):
+            raise providers.ProviderError("A campanha do Radar não está autorizada para esta tarefa.")
         if web_research and (
             task.mode != "chatgpt" or not task.workspace.policy.get("web_research")
             or not task.agent or task.agent.slug not in ("radar", "luma")
@@ -355,6 +393,8 @@ def process_one(provider=None):
                            ensure_ascii=False)
                 if web_research else _context(task)
             )
+            if legal_search:
+                prompt = legal_prospecting.request_context(task)
             if provider is not None:
                 result = provider(task.mode, task.workspace.ai_model, instructions, prompt, 1024)
             else:
@@ -375,8 +415,11 @@ def process_one(provider=None):
                 options = {"web_research": True} if web_research else {}
                 result = providers.generate(task.mode, task.workspace.ai_model, instructions, prompt, max_output,
                                             owner_id=task.workspace.owner_id, **options)
-            body = result["body"]
-            usage = result.get("usage", {})
+            if legal_search:
+                body, usage = legal_prospecting.prepare_result(task, result)
+            else:
+                body = result["body"]
+                usage = result.get("usage", {})
             if called_provider:
                 usage["provider_called"] = True
                 if task.mode == "chatgpt":
@@ -392,18 +435,23 @@ def process_one(provider=None):
             raise providers.ProviderError("A saída não contém uma entrega textual válida.", uncertain=called_provider)
         # A completed provider call is still persisted when pause is requested; no next external step is started.
         with transaction.atomic():
-            kind = task.kind if task.kind in ("content", "research") else ("local" if usage.get("local") else "draft")
+            kind = task.kind if task.kind in ("content", "research", legal_prospecting.KIND) else ("local" if usage.get("local") else "draft")
             title = task.title
             first_line = body.strip().partition("\n")[0].strip().strip("*")
             if kind == "content" and first_line.casefold().startswith("título:"):
                 title = first_line.partition(":")[2].strip().strip("*").strip()[:200] or title
             delivery = Delivery.objects.create(workspace=task.workspace, task=task, title=title, body=body, kind=kind)
-            Approval.objects.create(workspace=task.workspace, delivery=delivery, payload_hash=delivery_hash(delivery), expires_at=timezone.now() + timedelta(days=7))
-            task.status = "review"
+            needs_review = not legal_search or bool(usage.get("legal_candidates"))
+            if needs_review:
+                Approval.objects.create(workspace=task.workspace, delivery=delivery, payload_hash=delivery_hash(delivery), expires_at=timezone.now() + timedelta(days=7))
+            task.status = "review" if needs_review else "completed"
             task.save(update_fields=["status", "updated_at"])
             run.status, run.output, run.usage, run.finished_at = "completed", body, usage, timezone.now()
             run.save(update_fields=["status", "output", "usage", "finished_at", "reservation_usd"])
-            Event.objects.create(workspace=task.workspace, task=task, kind="delivery.created", message="Entrega salva para revisão. Nenhuma ação externa foi executada.")
+            Event.objects.create(workspace=task.workspace, task=task, kind="delivery.created", message=(
+                "Entrega salva para revisão. Nenhuma ação externa foi executada." if needs_review else
+                "Pesquisa concluída sem novos escritórios com fonte válida. Nada foi importado."
+            ))
             image_art.queue_automatic_image(delivery)
     except (providers.ProviderError, ValidationError) as exc:
         message = "; ".join(exc.messages) if isinstance(exc, ValidationError) else str(exc)
@@ -461,8 +509,10 @@ def _routine_has_pending(routine, now):
     pending = routine.occurrences.filter(
         task__status="review", task__deliveries__approvals__status="pending",
         task__deliveries__approvals__expires_at__gt=now,
-    ).distinct().count()
-    return pending >= (4 if routine.kind == "content" else 1)
+    )
+    if routine.kind == legal_prospecting.KIND:
+        return pending.filter(task__kind=legal_prospecting.KIND).distinct().count() >= legal_prospecting.MAX_PENDING_BATCHES
+    return pending.distinct().count() >= (4 if routine.kind == "content" else 1)
 
 
 def _enqueue_occurrence(routine, scheduled_for):
@@ -484,6 +534,12 @@ def run_routine_now(routine):
         raise ValidationError("Já existe uma entrega desta rotina em execução ou aguardando revisão.")
     if routine.kind not in LOCAL_KINDS and not provider_ready(routine.workspace):
         raise ValidationError("Conecte e autorize um provedor de IA antes de executar esta rotina.")
+    if routine.kind == legal_prospecting.KIND:
+        if not routine.enabled or not _legal_research_ready(routine.workspace, routine.agent):
+            raise ValidationError("Ative a campanha e autorize a pesquisa pública do Radar antes de executar.")
+        issue = _plan_quota_issue(routine.workspace, routine.kind, True, now)
+        if issue:
+            raise ValidationError(issue)
     _enqueue_occurrence(routine, now)
 
 
@@ -497,6 +553,13 @@ def schedule_due(now=None):
             continue
         if routine.kind not in LOCAL_KINDS and not provider_ready(routine.workspace):
             continue
+        if routine.kind == legal_prospecting.KIND:
+            if not _legal_research_ready(routine.workspace, routine.agent):
+                continue
+            if _plan_quota_issue(routine.workspace, routine.kind, True, now):
+                tomorrow = timezone.localtime(now).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+                Routine.objects.filter(pk=routine.pk, enabled=True, next_run=routine.next_run).update(next_run=tomorrow)
+                continue
         with transaction.atomic():
             claimed = Routine.objects.filter(pk=routine.pk, enabled=True, next_run=routine.next_run).update(
                 next_run=now + timedelta(minutes=max(15, routine.interval_minutes)))

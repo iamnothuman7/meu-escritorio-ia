@@ -30,7 +30,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.cache import never_cache
 
 from .models import Agent, Approval, Delivery, Event, FinancialEntry, InstagramPublication, Lead, Project, Routine, Run, Settlement, SystemState, Task, Workspace
-from . import chatgpt_plan, credentials, instagram, services
+from . import chatgpt_plan, credentials, instagram, legal_prospecting, services
 from .studio_scope import supports_studio
 
 
@@ -158,7 +158,7 @@ def context(request, page):
 def attach_research_citations(deliveries):
     for delivery in deliveries:
         delivery.research_citations = []
-    researched = {(item.task_id, item.body): item for item in deliveries if item.kind == 'research'}
+    researched = {(item.task_id, item.body): item for item in deliveries if item.kind in ('research', legal_prospecting.KIND)}
     if not researched:
         return
     runs = Run.objects.filter(task_id__in={task_id for task_id, _ in researched}, status='completed').order_by('pk')
@@ -307,7 +307,10 @@ def decision(request, pk):
             instagram.approve_and_queue(approval.delivery,request.POST.get('hash',''),request.POST.get('instagram_account_id',''))
             messages.success(request,'Entrega aprovada e enviada à fila do Instagram.')
         else:
-            services.approve_delivery(approval.delivery,request.POST.get('decision'),request.POST.get('hash',''))
+            recorded = services.approve_delivery(approval.delivery,request.POST.get('decision'),request.POST.get('hash',''))
+            if approval.delivery.task.kind == legal_prospecting.KIND and recorded.status == 'approved':
+                messages.success(request,'O lote foi aprovado. Os novos escritórios estão no Comercial.')
+                return redirect('/work/?tab=leads#commercial-crm')
             messages.success(request,'Decisão registrada para esta versão da entrega.')
     except (ValidationError,ValueError) as exc:
         messages.error(request,str(exc))
@@ -319,6 +322,8 @@ def decision(request, pk):
 def edit_delivery(request, pk):
     w = active_workspace(request)
     delivery = get_object_or_404(Delivery,pk=pk,workspace=w)
+    if delivery.task.kind == legal_prospecting.KIND:
+        return HttpResponse('A lista do Radar é vinculada às fontes verificadas e não pode ser editada nesta entrega.', status=409)
     try:
         with transaction.atomic():
             changed = Delivery.objects.filter(pk=pk,workspace=w,version=int(request.POST.get('version',0))).update(body=request.POST.get('body','')[:40000],version=delivery.version+1,updated_at=timezone.now())
@@ -354,6 +359,14 @@ def work(request):
     c.update(tab=tab,leads=Lead.objects.filter(workspace=w).order_by('-created_at')[:100],projects=Project.objects.filter(workspace=w).order_by('-created_at')[:100],contents=Delivery.objects.filter(workspace=w,kind='content').select_related('task').order_by('-created_at')[:100],routines=Routine.objects.filter(workspace=w).select_related('agent'),totals=services.finance_totals(w))
     if tab == 'routines':
         c['provider_ready'] = services.provider_ready(w)
+    if tab == 'leads':
+        legal_routine = c['routines'].filter(kind=legal_prospecting.KIND, agent__slug='radar').first()
+        c.update(legal_routine=legal_routine, office_paused=services.is_paused(w))
+        if legal_routine:
+            c['legal_ready'] = bool(services.provider_ready(w) and w.ai_mode == 'chatgpt'
+                                    and w.policy.get('web_research') is True and legal_routine.agent.enabled)
+            last = legal_routine.occurrences.filter(task__workspace=w, task__kind=legal_prospecting.KIND).select_related('task').order_by('-scheduled_for').first()
+            c['legal_last_task'] = last.task if last else None
     entries = list(FinancialEntry.objects.filter(workspace=w).prefetch_related('settlements').order_by('-created_at')[:100])
     for e in entries:
         e.paid_cents = sum(s.amount_cents for s in e.settlements.all())
@@ -452,6 +465,10 @@ def work_action(request):
             routine=get_object_or_404(Routine,pk=request.POST.get('id'),workspace=w)
             enabling=not routine.enabled
             if enabling and routine.kind not in services.LOCAL_KINDS and not services.provider_ready(w): raise ValueError('Conecte e autorize um provedor de IA antes de ativar esta rotina.')
+            if enabling and routine.kind == legal_prospecting.KIND and (
+                w.ai_mode != 'chatgpt' or w.policy.get('web_research') is not True or not routine.agent or not routine.agent.enabled
+            ):
+                raise ValueError('Ative o Radar e autorize a pesquisa pública do ChatGPT antes de retomar a campanha.')
             if enabling and not request.POST.get('confirm'): raise ValueError('Confirme a execução recorrente para ativar.')
             routine.enabled=enabling
             routine.next_run=timezone.now()+timedelta(minutes=routine.interval_minutes) if enabling else None

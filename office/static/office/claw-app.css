@@ -118,3 +118,24 @@ dialog.modal .modal-header h2{font:400 30px/1.1 var(--claw-font-display);letter-
 }
 @media(max-width:350px){.claw-brand{font-size:21px}.claw-header__actions .install-compact{display:none}.claw-tab,.claw-tab .badge{font-size:9px}}
 @media print{.topbar.claw-header,.claw-dock,.claw-skip{display:none}[data-claw-shell]{display:block;padding:0}.main.claw-main{border:0;box-shadow:none}}
+
+.claw-main .radar-campaign{display:grid;gap:14px;margin-bottom:18px;border-top-color:var(--claw-accent-border)}
+.radar-campaign__heading,.radar-campaign__footer{display:flex;align-items:flex-start;justify-content:space-between;gap:10px 18px;flex-wrap:wrap}
+.radar-campaign__heading>div{flex:1 1 280px;min-width:0}
+.radar-campaign__heading h2,.radar-campaign__heading p,.radar-campaign__footer p{margin:0}
+.radar-campaign__heading h2{margin:4px 0;font-size:clamp(18px,2.4vw,24px);line-height:1.15}
+.radar-campaign__metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.radar-campaign__metrics>div{min-width:0;padding:9px 11px;border:1px solid var(--claw-border);border-radius:var(--claw-radius);background:var(--claw-sidebar)}
+.radar-campaign__metrics dt{color:var(--claw-muted);font:500 10px/1.4 var(--claw-font-mono);letter-spacing:.05em;text-transform:uppercase}
+.radar-campaign__metrics dd{display:flex;align-items:center;gap:4px 7px;flex-wrap:wrap;margin:3px 0 0;color:var(--claw-ink);font-size:14px;font-weight:600}
+.radar-campaign__footer p{flex:1 1 260px;align-self:center}
+.radar-campaign__actions{display:flex;flex-wrap:wrap;gap:6px}
+.claw-main .radar-campaign__actions .btn{min-height:44px;white-space:normal;text-align:center}
+.claw-main .radar-review-note{display:block;margin-block:10px}
+.claw-main :is(#commercial-crm,.routine-card,.approval-card)[id]{scroll-margin-top:12px}
+@media(max-width:570px){
+  .radar-campaign__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .radar-campaign__metrics>div:last-child{grid-column:1/-1}
+  .radar-campaign__actions{width:100%}
+  .radar-campaign__actions .btn{flex:1 1 130px}
+}

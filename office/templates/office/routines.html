@@ -6,7 +6,7 @@
 <section class="panel panel-body">
   <p class="eyebrow">8 agentes</p>
   <h3>Ativar a equipe</h3>
-  <p class="muted">Atlas, Radar, Elo, Luma, Cora, Nexo, Pixel e Byte produzem os primeiros rascunhos assim que o executor recebe as tarefas. A rotina de conteúdo roda até quatro vezes por dia e guarda até quatro entregas em revisão. As demais guardam uma entrega por rotina.</p>
+  <p class="muted">Os agentes produzem rascunhos conforme o horário de cada rotina. A campanha de advocacia pode deixar novos lotes em revisão enquanto a equipe continua trabalhando dentro da cota.</p>
   {% if provider_ready %}
     <form hx-sync="this:drop" method="post" action="/work/action/">
       {% csrf_token %}<input type="hidden" name="action" value="team_activate"><input type="hidden" name="tab" value="routines">
@@ -19,7 +19,7 @@
 </section>
 <div class="content-grid">
   {% for routine in routines %}
-    <article class="panel panel-body routine-card">
+    <article class="panel panel-body routine-card" id="routine-{{ routine.pk }}">
       <div class="section-heading"><span class="pill">{{ routine.agent.name|default:'Sem agente' }}</span><span class="status {% if routine.enabled %}status-running{% endif %}">{% if routine.enabled %}Ativa{% else %}Desativada{% endif %}</span></div>
       <h3>{{ routine.name }}</h3><p class="muted">{{ routine.objective }}</p>
       <p>A cada {{ routine.interval_minutes }} minutos</p>

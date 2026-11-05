@@ -46,6 +46,10 @@ Em **Configurações → Instagram**, conecte o token oficial de um perfil profi
 
 Em **Trabalho → Rotinas**, ative a equipe para agendar a primeira rodada de oito entregas. A rotina de marketing roda a cada seis horas e mantém até quatro rascunhos na fila. As demais rodam diariamente e aguardam a revisão anterior. O executor funciona enquanto o computador ou servidor da instalação estiver ligado.
 
+Em **Trabalho → Comercial**, a campanha **Prospecção de escritórios de advocacia** consulta sites institucionais públicos no Ceará a cada seis horas. Ela alterna regiões, evita repetir candidatos e pede revisão das fontes. **Aprovar e importar ao CRM** cadastra apenas os novos registros da empresa ativa. A campanha não envia abordagens. Quando a cota de rotinas do ChatGPT acaba, a próxima pesquisa é adiada até a meia-noite de Fortaleza. Em **Trabalho → Automações**, o titular pode pausar ou retomar a campanha.
+
+Para configurar a campanha em uma instalação autorizada, use `python manage.py configure_legal_prospecting --workspace ID --owner ID` com o Radar ativo e o Plano ChatGPT conectado. A opção `--disable` pausa apenas essa campanha.
+
 ## Verificar e manter
 
 ```powershell

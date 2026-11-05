@@ -1,0 +1,52 @@
+{% load office_tags %}
+{% if legal_routine %}
+<section class="panel panel-body radar-campaign" aria-labelledby="radar-campaign-title">
+  <div class="radar-campaign__heading">
+    <div>
+      <p class="eyebrow">RADAR · PESQUISA PÚBLICA</p>
+      <h2 id="radar-campaign-title">Prospecção de escritórios de advocacia</h2>
+      <p class="muted">O Radar reúne oportunidades de empresas com fontes públicas. Você confere o lote antes de importar candidatos para o CRM.</p>
+    </div>
+    <span class="status {% if office_paused %}status-paused{% elif legal_routine.enabled and legal_ready and worker_online %}status-running{% elif legal_routine.enabled %}status-blocked{% endif %}">
+      {% if office_paused %}Escritório pausado{% elif not legal_routine.enabled %}Campanha pausada{% elif not legal_ready %}Confira a conexão e o Radar{% elif not worker_online %}Executor indisponível{% else %}Campanha ativa{% endif %}
+    </span>
+  </div>
+
+  <dl class="radar-campaign__metrics">
+    <div>
+      <dt>Frequência</dt>
+      <dd>
+        {% if legal_routine.interval_minutes == 60 %}A cada hora
+        {% elif legal_routine.interval_minutes|divisibleby:60 %}A cada {% widthratio legal_routine.interval_minutes 60 1 %} horas
+        {% else %}A cada {{ legal_routine.interval_minutes }} minutos{% endif %}
+      </dd>
+    </div>
+    <div>
+      <dt>Próxima janela</dt>
+      <dd>
+        {% if legal_routine.enabled and legal_routine.next_run and not office_paused and legal_ready %}
+          <time datetime="{{ legal_routine.next_run|date:'c' }}">{{ legal_routine.next_run|date:'d/m/Y · H:i' }}</time>
+        {% else %}Sem horário ativo{% endif %}
+      </dd>
+    </div>
+    <div>
+      <dt>Último lote</dt>
+      <dd>
+        {% if legal_last_task %}
+          <time datetime="{{ legal_last_task.created_at|date:'c' }}">{{ legal_last_task.created_at|date:'d/m/Y · H:i' }}</time>
+          <span class="status status-{{ legal_last_task.status }}">{{ legal_last_task.status|label }}</span>
+        {% else %}Aguardando primeira execução{% endif %}
+      </dd>
+    </div>
+  </dl>
+
+  <div class="radar-campaign__footer">
+    <p class="muted">As buscas continuam entre as revisões, dentro da cota do ChatGPT. Nenhuma mensagem é enviada.</p>
+    <div class="radar-campaign__actions">
+      {% if legal_last_task %}<a class="btn secondary small" href="/tasks/{{ legal_last_task.pk }}/">Ver último lote {% icon 'arrow' 16 %}</a>{% endif %}
+      <a class="btn secondary small" href="/approvals/">Abrir aprovações</a>
+      <a class="btn ghost small" href="/work/?tab=routines#routine-{{ legal_routine.pk }}" hx-boost="false">Gerenciar em Automações</a>
+    </div>
+  </div>
+</section>
+{% endif %}

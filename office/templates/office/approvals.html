@@ -9,17 +9,20 @@
 
 <section class="approval-queue" aria-label="Entregas aguardando revisão">
   {% for item in items %}
-  <article class="panel approval-card">
+  <article class="panel approval-card" id="delivery-{{ item.delivery.pk }}">
     <div class="section-heading">
-      <div><p class="eyebrow">{{ item.delivery.task.agent.name|default:'Entrega da equipe' }} · Versão {{ item.delivery.version }}</p><h2>{{ item.delivery.title }}</h2></div>
+      <div><p class="eyebrow">{% if item.delivery.task.kind == 'legal_prospecting' %}Radar · Prospecção de advocacia{% else %}{{ item.delivery.task.agent.name|default:'Entrega da equipe' }}{% endif %} · Versão {{ item.delivery.version }}</p><h2>{{ item.delivery.title }}</h2></div>
       <span class="status status-review">Aguardando revisão</span>
     </div>
     <div class="approval-meta">
       <span class="approval-date">Entregue em <time datetime="{{ item.delivery.created_at|date:'c' }}">{{ item.delivery.created_at|date:'d/m/Y · H:i' }}</time></span>
       <span class="approval-date">Prazo para revisar <time datetime="{{ item.expires_at|date:'c' }}">{{ item.expires_at|date:'d/m/Y · H:i' }}</time></span>
     </div>
-    <details class="approval-content">
-      <summary>Revisar entrega</summary>
+    <details class="approval-content"{% if item.delivery.task.kind == 'legal_prospecting' %} open{% endif %}>
+      <summary>{% if item.delivery.task.kind == 'legal_prospecting' %}Revisar lote e fontes{% else %}Revisar entrega{% endif %}</summary>
+      {% if item.delivery.task.kind == 'legal_prospecting' %}
+        <p class="notice radar-review-note">Confira as fontes deste lote. A aprovação importa os candidatos elegíveis para o CRM desta empresa. Qualquer contato é uma ação separada.</p>
+      {% endif %}
       {% include 'office/delivery_media.html' with delivery=item.delivery %}
       {% if item.delivery.research_missing_sources %}<p class="notice">A execução não retornou citações verificáveis.</p>{% endif %}
       <pre class="prose">{{ item.delivery.body|research_links:item.delivery.research_citations }}</pre>
@@ -35,9 +38,9 @@
       <form hx-sync="this:drop" class="form-actions approval-actions" method="post" action="/approvals/{{ item.pk }}/decision/">
         {% csrf_token %}<input type="hidden" name="hash" value="{{ item.current_hash }}">
         {% if item.publish_caption and instagram_connection.connected and instagram_connection.available %}<input type="hidden" name="instagram_account_id" value="{{ instagram_connection.account_id }}">{% endif %}
-        <a href="/tasks/{{ item.delivery.task_id }}/" class="btn secondary small">Editar entrega</a>
+        <a href="/tasks/{{ item.delivery.task_id }}/" class="btn secondary small">{% if item.delivery.task.kind == 'legal_prospecting' %}Ver tarefa do Radar{% else %}Editar entrega{% endif %}</a>
         <button type="submit" name="decision" value="reject" class="btn ghost small">Rejeitar</button>
-        <button type="submit" name="decision" value="approve" class="btn primary small" {% if item.delivery.generated_image.status == 'queued' or item.delivery.generated_image.status == 'running' %}disabled{% endif %}>{% icon 'check' 17 %} Aprovar esta versão</button>
+        <button type="submit" name="decision" value="approve" class="btn primary small" {% if item.delivery.generated_image.status == 'queued' or item.delivery.generated_image.status == 'running' %}disabled{% endif %}>{% icon 'check' 17 %} {% if item.delivery.task.kind == 'legal_prospecting' %}Aprovar e importar ao CRM{% else %}Aprovar esta versão{% endif %}</button>
         {% if item.publish_caption and instagram_connection.connected and instagram_connection.available %}<button type="submit" name="decision" value="publish" class="btn primary small">Aprovar e publicar</button>{% endif %}
       </form>
     </details>

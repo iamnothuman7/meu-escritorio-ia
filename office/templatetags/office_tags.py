@@ -65,4 +65,6 @@ def icon(name, size=20):
 def label(value):
     if value == 'research':
         return 'Pesquisa pública'
+    if value == 'legal_prospecting':
+        return 'Prospecção de advocacia'
     return {'draft':'Rascunho','queued':'Na fila','running':'Trabalhando','review':'Em revisão','completed':'Concluída','blocked':'Bloqueada','paused':'Pausada','failed':'Falhou','cancelled':'Cancelada','pending':'Pendente','approved':'Aprovada','rejected':'Rejeitada','expired':'Expirada','income':'A receber','expense':'A pagar','new':'Novo','qualified':'Qualificado','contacted':'Contato registrado','proposal':'Proposta','won':'Ganho','closed':'Encerrado','active':'Em andamento','done':'Concluído','offline':'Sem IA','openai':'OpenAI API','claude':'Claude API','chatgpt':'Plano ChatGPT','normal':'Normal','high':'Alta','low':'Baixa','general':'Geração com IA','content':'Conteúdo com IA','summary':'Resumo local','finance':'Conferência local','template':'Modelo local'}.get(value,value)
