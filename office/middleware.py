@@ -37,7 +37,7 @@ class LocalSecurityMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.method == 'POST' and request.path.rstrip('/') in ('/login', '/setup') and self.rate_limited(request):
+        if request.method == 'POST' and request.path.rstrip('/') in ('/login', '/setup', '/access') and self.rate_limited(request):
             response = HttpResponse('Muitas tentativas de acesso. Aguarde cinco minutos e tente novamente.', status=429, content_type='text/plain; charset=utf-8')
             response['Retry-After'] = str(settings.AUTH_POST_WINDOW_SECONDS)
         else:
@@ -51,7 +51,7 @@ class LocalSecurityMiddleware:
             if 'Location' in response:
                 del response['Location']
             if safe:
-                if parsed.path in ('/login/','/setup/','/'):
+                if parsed.path in ('/login/','/setup/','/access/','/'):
                     response['HX-Redirect']=location
                 else:
                     response['HX-Location']=json.dumps({'path':location,'target':'#app-shell','select':'#app-shell','swap':'outerHTML'})

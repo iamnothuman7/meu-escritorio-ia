@@ -276,3 +276,10 @@ class SystemState(models.Model):
 class WorkerLease(models.Model):
     owner = models.CharField(max_length=120)
     heartbeat = models.DateTimeField(default=timezone.now)
+
+
+class OwnerAccessCode(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="owner_access_code")
+    digest = models.CharField(max_length=64)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)

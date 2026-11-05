@@ -3,9 +3,11 @@ from django.contrib.auth import views as auth
 from django.urls import path
 from django.views.static import serve
 from office import views
+from office.access import owner_access
 
 urlpatterns = [
     path('health',views.health),path('setup/',views.setup),
+    path('access/', owner_access, name='owner-access'),
     path('login/',views.login_route),path('logout/',auth.LogoutView.as_view(next_page='/')),
     path('',views.landing),path('app/',views.dashboard),
     path('manifest.webmanifest',views.webmanifest),path('sw.js',views.service_worker),path('offline/',views.offline_page),

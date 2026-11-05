@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#F8F7F4">
   <meta name="description" content="Acesse sua equipe, suas tarefas e suas aprovações no Nabio Office.">
   <title>{% if setup %}Configure seu escritório{% else %}Entrar{% endif %} · Nabio Office</title>
@@ -54,8 +54,8 @@
           </div>
           {% endif %}
           <div class="form-field">
-            <label for="username">Seu usuário</label>
-            <div class="input-shell">{% icon 'user' 19 %}<input id="username" name="username" type="text" value="{% if setup %}{{ request.POST.username|default:'' }}{% else %}{{ form.username.value|default:'' }}{% endif %}" required minlength="3" maxlength="150" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Digite seu usuário"></div>
+            <label for="username">{% if setup %}Seu usuário{% else %}E-mail ou usuário{% endif %}</label>
+            <div class="input-shell">{% icon 'user' 19 %}<input id="username" name="username" type="text" value="{% if setup %}{{ request.POST.username|default:'' }}{% else %}{{ form.username.value|default:'' }}{% endif %}" required minlength="3" maxlength="150" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="{% if setup %}Digite seu usuário{% else %}Digite seu e-mail ou usuário{% endif %}"></div>
           </div>
           <div class="form-field">
             <label for="password">Sua senha</label>

@@ -15,6 +15,9 @@ import zipfile
 from django.conf import settings
 
 
+AUTH_TABLES = ("django_session", "office_owneraccesscode")
+
+
 def _digest(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -50,14 +53,14 @@ def create_backup(output_path=None, database_path=None, media_root=None) -> Path
         with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as source:
             with closing(sqlite3.connect(snapshot)) as destination:
                 source.backup(destination)
-                session_table = destination.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='django_session'"
-                ).fetchone()
-                if session_table:
-                    # Session keys are bearer credentials. Remove their bytes from
-                    # the snapshot, including rows deleted before this backup.
+                auth_tables = destination.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN (?, ?)", AUTH_TABLES,
+                ).fetchall()
+                if auth_tables:
+                    # Discard active sessions and temporary access codes from the copy.
                     destination.execute("PRAGMA secure_delete=ON")
-                    destination.execute("DELETE FROM django_session")
+                    for (table,) in auth_tables:
+                        destination.execute(f"DELETE FROM {table}")
                     destination.commit()
                     destination.execute("VACUUM")
         _validate_database(snapshot)
@@ -116,8 +119,8 @@ def _disable_execution(database: Path) -> None:
             "office_routine": "UPDATE office_routine SET enabled=0",
             "office_systemstate": "UPDATE office_systemstate SET paused=1",
             "office_task": "UPDATE office_task SET status='paused' WHERE status IN ('queued','running')",
-            "django_session": "DELETE FROM django_session",
         }
+        updates.update({table: f"DELETE FROM {table}" for table in AUTH_TABLES})
         for table, statement in updates.items():
             if table in tables:
                 connection.execute(statement)

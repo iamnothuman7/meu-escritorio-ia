@@ -32,6 +32,8 @@ class BackupTests(SimpleTestCase):
                 INSERT INTO office_systemstate VALUES (1, 0);
                 CREATE TABLE django_session (session_key TEXT PRIMARY KEY, session_data TEXT);
                 INSERT INTO django_session VALUES ('active-browser-session-marker', 'signed-session-data-marker');
+                CREATE TABLE office_owneraccesscode (id INTEGER PRIMARY KEY, digest TEXT);
+                INSERT INTO office_owneraccesscode VALUES (1, 'temporary-access-digest-marker');
             """)
         self.archive = self.root / "backup.zip"
 
@@ -48,6 +50,7 @@ class BackupTests(SimpleTestCase):
             self.assertEqual(connection.execute("SELECT status FROM office_task").fetchone(), ("paused",))
             self.assertEqual(connection.execute("SELECT paused FROM office_systemstate").fetchone(), (1,))
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM django_session").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM office_owneraccesscode").fetchone()[0], 0)
         with zipfile.ZipFile(self.archive) as archive:
             self.assertNotIn("secrets.env", archive.namelist())
             self.assertFalse(json.loads(archive.read("manifest.json"))["secrets_included"])
@@ -72,9 +75,12 @@ class BackupTests(SimpleTestCase):
             snapshot = archive.read("office.sqlite3")
         self.assertNotIn(b"active-browser-session-marker", snapshot)
         self.assertNotIn(b"signed-session-data-marker", snapshot)
+        self.assertNotIn(b"temporary-access-digest-marker", snapshot)
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(connection.execute("SELECT session_key FROM django_session").fetchone(),
                              ("active-browser-session-marker",))
+            self.assertEqual(connection.execute("SELECT digest FROM office_owneraccesscode").fetchone(),
+                             ("temporary-access-digest-marker",))
 
     def test_existing_data_is_never_overwritten(self):
         self.backup()

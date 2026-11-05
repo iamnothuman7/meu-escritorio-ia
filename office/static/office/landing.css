@@ -25,9 +25,9 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 96px; scrollbar-width: none; }
+html { scroll-behavior: smooth; scroll-padding-top: 96px; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
-html, body { overflow-x: clip; }
+html, body { overflow-x: clip; scrollbar-width: none; }
 body { margin: 0; background: var(--paper); line-height: 1.6; }
 [hidden] { display: none !important; }
 a { color: inherit; text-decoration: none; }
@@ -319,6 +319,8 @@ h1, .section-intro h2, .closing h2 {
 
 @media (max-width: 790px) {
   .container { width: calc(100% - 48px); }
+  .nav-layout { gap: 16px; }
+  .site-nav { gap: 20px; }
   .hero { min-height: 0; grid-template-columns: 1fr; gap: 32px; padding-block: 56px 43px; }
   .hero h1 { max-width: 640px; font-size: clamp(45px, 9vw, 68px); }
   .hero-description { max-width: 550px; }
@@ -351,7 +353,7 @@ h1, .section-intro h2, .closing h2 {
   .demo-body { padding: 14px 12px 13px; }
   .demo-body h2 { font-size: 19px; margin-bottom: 13px; }
   .demo-tabs { gap: 2px; margin-bottom: 8px; padding: 3px; }
-  .demo-tabs button { min-height: 44px; font-size: 10px; padding-inline: 2px; }
+  .demo-tabs button { min-height: 44px; font-size: 10px; padding-inline: 2px; white-space: normal; }
   .demo-tabs button span { margin-right: 2px; font-size: 8px; }
   .demo-panel { padding: 10px; }
   .demo-panel p { font-size: 11px; }
@@ -362,6 +364,7 @@ h1, .section-intro h2, .closing h2 {
   .work-strip { flex-direction: column; align-items: flex-start; gap: 7px; }
   .work-strip > span { font-size: 10px; }
   .work-strip ul, .work-strip li { gap: 10px; }
+  .work-strip ul { flex-wrap: wrap; }
   .work-strip li { font-size: 10px; }
   .section-space { padding-block: 49px; }
   .section-intro { margin-bottom: 21px; }
@@ -391,6 +394,12 @@ h1, .section-intro h2, .closing h2 {
   .actions { flex-direction: column; align-items: stretch; }
   .actions .button { font-size: 12px; }
   .demo-state { white-space: normal; text-align: right; }
+}
+
+@media (orientation: landscape) and (max-height: 480px) {
+  html { scroll-padding-top: 73px; }
+  .nav-layout { min-height: 58px; }
+  .hero { min-height: 0; padding-block: 34px 38px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
