@@ -2,12 +2,14 @@ from django.conf import settings
 from django.contrib.auth import views as auth
 from django.urls import path
 from django.views.static import serve
+from django.views.generic import RedirectView
 from office import views
-from office.access import owner_access
+from office.platform_admin import platform_admin
 
 urlpatterns = [
     path('health',views.health),path('setup/',views.setup),
-    path('access/', owner_access, name='owner-access'),
+    path('access/', RedirectView.as_view(url='/login/')),
+    path('administracao/', platform_admin, name='platform_admin'),
     path('login/',views.login_route),path('logout/',auth.LogoutView.as_view(next_page='/')),
     path('',views.landing),path('app/',views.dashboard),
     path('manifest.webmanifest',views.webmanifest),path('sw.js',views.service_worker),path('offline/',views.offline_page),

@@ -315,6 +315,35 @@ class OfficeWebTests(TestCase):
         response = self.client.post('/office/pause/', {'return_to': '/tasks/'})
         self.assertRedirects(response, '/tasks/', fetch_redirect_response=False)
 
+    def test_pause_changes_only_the_active_company(self):
+        SystemState.objects.create(pk=1, paused=False)
+        self.client.post('/office/pause/')
+        self.workspace.refresh_from_db()
+        self.second.refresh_from_db()
+        self.foreign.refresh_from_db()
+        self.assertTrue(self.workspace.paused)
+        self.assertFalse(self.second.paused)
+        self.assertFalse(self.foreign.paused)
+        self.assertFalse(SystemState.objects.get(pk=1).paused)
+        self.assertTrue(self.client.get('/api/v1/dashboard').json()['paused'])
+
+    def test_api_key_settings_use_session_owner_and_never_return_secret(self):
+        secret = 'sk-office-test-key-for-this-account'
+        with patch('office.credentials.save_api_key') as save:
+            response = self.client.post('/settings/save/', {
+                'action': 'api_key', 'api_mode': 'openai', 'api_key': secret, 'owner': self.other_user.pk,
+            }, follow=True)
+        save.assert_called_once_with(self.owner.pk, 'openai', secret)
+        self.assertNotContains(response, secret)
+        with patch('office.credentials.delete_api_key') as remove:
+            self.client.post('/settings/save/', {
+                'action': 'api_key', 'api_mode': 'openai', 'clear': '1', 'owner': self.other_user.pk,
+            })
+        remove.assert_called_once_with(self.owner.pk, 'openai')
+
+    def test_legacy_access_link_opens_standard_login(self):
+        self.assertRedirects(Client().get('/access/'), '/login/', fetch_redirect_response=False)
+
     def test_dashboard_api_never_leaks_other_company_tasks(self):
         Task.objects.create(workspace=self.workspace, title='Visível', objective='A')
         Task.objects.create(workspace=self.second, title='Segredo outra empresa', objective='B')

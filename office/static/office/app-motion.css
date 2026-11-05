@@ -330,3 +330,31 @@ dialog::backdrop { background: #1d23345c; }
   .page-content { padding-bottom: 22px; }
   html { scroll-padding-bottom: 16px; }
 }
+
+.provider-credentials { margin-top: 20px; }
+.provider-credentials h3, .provider-connection-form h3 { margin: 0 0 8px; font-size: 16px; }
+.provider-credentials > p { margin-bottom: 12px; }
+.provider-key-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 12px;
+}
+.provider-key-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.provider-key-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+.provider-key-heading h4 { margin: 0; font-size: 13px; }
+.provider-key-actions { justify-content: flex-start; margin-top: 9px; padding-top: 0; border-top: 0; }
+.provider-connection-form { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.provider-connection-form details summary { cursor: pointer; }

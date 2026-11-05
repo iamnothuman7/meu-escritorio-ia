@@ -2,7 +2,11 @@
 import json
 import os
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+from django.conf import settings
+
+from . import credentials
 
 
 class ProviderError(Exception):
@@ -12,15 +16,38 @@ class ProviderError(Exception):
         self.code = code
 
 
-def has_api_key(mode):
-    variable = {"openai": "OPENAI_API_KEY", "claude": "ANTHROPIC_API_KEY"}.get(mode)
-    return bool(variable and os.environ.get(variable, "").strip())
+class _RejectRedirects(HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, message, headers, url):
+        return None
+
+
+_http = build_opener(_RejectRedirects())
+
+
+def _api_key(mode, owner_id):
+    try:
+        key = credentials.load_api_key(owner_id, mode)
+    except credentials.CredentialError as exc:
+        raise ProviderError(str(exc)) from None
+    if key:
+        return key
+    if not settings.HTTPS_ENABLED and os.environ.get("NABI_LEGACY_PROVIDER_OWNER_ID") == str(owner_id):
+        variable = {"openai": "OPENAI_API_KEY", "claude": "ANTHROPIC_API_KEY"}[mode]
+        return os.environ.get(variable, "").strip()
+    return ""
+
+
+def has_api_key(mode, *, owner_id):
+    try:
+        return bool(_api_key(mode, owner_id))
+    except ProviderError:
+        return False
 
 
 def _post(url, payload, headers):
     request = Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
     try:
-        with urlopen(request, timeout=90) as response:
+        with _http.open(request, timeout=90) as response:
             raw = response.read(4_000_001)
             if len(raw) > 4_000_000:
                 raise ProviderError("Resposta excedeu o limite local; consumo a confirmar.", uncertain=True)
@@ -38,13 +65,13 @@ def _post(url, payload, headers):
         raise ProviderError("Não foi possível confirmar a resposta do provedor. Consumo a confirmar; não haverá repetição automática.", uncertain=True) from None
 
 
-def generate(mode, model, instructions, prompt, max_output_tokens=1024):
+def generate(mode, model, instructions, prompt, max_output_tokens=1024, *, owner_id):
     if not model:
         raise ProviderError("Nenhum modelo foi escolhido e validado.")
     if mode == "openai":
-        key = os.environ.get("OPENAI_API_KEY", "")
+        key = _api_key(mode, owner_id)
         if not key:
-            raise ProviderError("OpenAI não configurada. Configure OPENAI_API_KEY no ambiente do servidor.")
+            raise ProviderError("Cadastre a chave OpenAI da sua conta nas configurações.")
         response = _post("https://api.openai.com/v1/responses", {
             "model": model, "instructions": instructions, "input": prompt,
             "max_output_tokens": max_output_tokens, "store": False,
@@ -60,9 +87,9 @@ def generate(mode, model, instructions, prompt, max_output_tokens=1024):
             "request_id": response.get("id", ""),
         }}
     elif mode == "claude":
-        key = os.environ.get("ANTHROPIC_API_KEY", "")
+        key = _api_key(mode, owner_id)
         if not key:
-            raise ProviderError("Claude não configurado. Configure ANTHROPIC_API_KEY no ambiente do servidor.")
+            raise ProviderError("Cadastre a chave Anthropic da sua conta nas configurações.")
         response = _post("https://api.anthropic.com/v1/messages", {
             "model": model, "system": instructions, "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_output_tokens,
@@ -79,7 +106,7 @@ def generate(mode, model, instructions, prompt, max_output_tokens=1024):
         from . import chatgpt_plan
 
         try:
-            result = chatgpt_plan.generate(model, instructions, prompt)
+            result = chatgpt_plan.generate(model, instructions, prompt, owner_id=owner_id)
         except chatgpt_plan.PlanError as exc:
             raise ProviderError(str(exc), uncertain=exc.uncertain, code=exc.code) from None
     else:

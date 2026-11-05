@@ -37,7 +37,7 @@ class LocalSecurityMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.method == 'POST' and request.path.rstrip('/') in ('/login', '/setup', '/access') and self.rate_limited(request):
+        if request.method == 'POST' and request.path.rstrip('/') in ('/login', '/setup') and self.rate_limited(request):
             response = HttpResponse('Muitas tentativas de acesso. Aguarde cinco minutos e tente novamente.', status=429, content_type='text/plain; charset=utf-8')
             response['Retry-After'] = str(settings.AUTH_POST_WINDOW_SECONDS)
         else:
@@ -51,7 +51,7 @@ class LocalSecurityMiddleware:
             if 'Location' in response:
                 del response['Location']
             if safe:
-                if parsed.path in ('/login/','/setup/','/access/','/'):
+                if parsed.path in ('/login/','/setup/','/administracao/','/'):
                     response['HX-Redirect']=location
                 else:
                     response['HX-Location']=json.dumps({'path':location,'target':'#app-shell','select':'#app-shell','swap':'outerHTML'})
@@ -70,7 +70,17 @@ class LocalSecurityMiddleware:
                 client_ip = str(ipaddress.ip_address(candidate))
             except ValueError:
                 pass
-        key = 'nabi-auth-post:' + hashlib.sha256(client_ip.encode('utf-8')).hexdigest()
+        if self.exceeds_auth_limit('ip', client_ip):
+            return True
+        if request.path.rstrip('/') == '/login':
+            username = request.POST.get('username', '').strip().casefold()[:150]
+            if username:
+                return self.exceeds_auth_limit('account', username)
+        return False
+
+    @staticmethod
+    def exceeds_auth_limit(scope, value):
+        key = f'nabi-auth-post:{scope}:' + hashlib.sha256(value.encode('utf-8')).hexdigest()
         if cache.add(key, 1, timeout=settings.AUTH_POST_WINDOW_SECONDS):
             count = 1
         else:

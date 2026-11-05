@@ -90,7 +90,7 @@ def provider_ready(workspace):
         return False
     if workspace.ai_mode == "chatgpt":
         return plan_connection(workspace)["connected"] and bool(workspace.policy.get("chatgpt_confirmed"))
-    if workspace.ai_mode not in ("openai", "claude") or not providers.has_api_key(workspace.ai_mode):
+    if workspace.ai_mode not in ("openai", "claude") or not providers.has_api_key(workspace.ai_mode, owner_id=workspace.owner_id):
         return False
     budget = workspace.policy.get("budget", {})
     return bool(budget.get("confirmed") and budget.get("provider") == workspace.ai_mode
@@ -330,13 +330,16 @@ def process_one(provider=None):
                 if task.mode == "chatgpt":
                     _check_plan_quota(task, run, prompt)
                 else:
+                    if not providers.has_api_key(task.mode, owner_id=task.workspace.owner_id):
+                        raise providers.ProviderError("Cadastre a chave do provedor na sua conta antes de executar esta tarefa.")
                     max_output, input_price, output_price = _budget_reservation(task, run, prompt)
                 if is_paused(task.workspace):
                     raise providers.ProviderError("Escritório pausado antes da chamada.")
                 called_provider = True
                 run.usage = {"provider_called": True, "pending_usage": True}
                 run.save(update_fields=["usage"])
-                result = providers.generate(task.mode, task.workspace.ai_model, instructions, prompt, max_output)
+                result = providers.generate(task.mode, task.workspace.ai_model, instructions, prompt, max_output,
+                                            owner_id=task.workspace.owner_id)
             body = result["body"]
             usage = result.get("usage", {})
             if called_provider:

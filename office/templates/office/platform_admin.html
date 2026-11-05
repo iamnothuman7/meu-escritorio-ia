@@ -1,0 +1,74 @@
+{% load static office_tags %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#F8F7F4">
+  <title>Administração da plataforma · Nabio Office</title>
+  <link rel="icon" href="{% static 'office/brand/icon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'office/app.css' %}">
+  <link rel="stylesheet" href="{% static 'office/app-motion.css' %}">
+  <link rel="stylesheet" href="{% static 'office/platform-admin.css' %}">
+</head>
+<body class="platform-admin">
+  <header class="platform-header">
+    <a href="/" class="platform-brand"><img src="{% static 'office/brand/icon.svg' %}" alt="" width="30" height="30">Nabio Office</a>
+    <form method="post" action="/logout/">
+      {% csrf_token %}
+      <button class="btn secondary" type="submit">{% icon 'logout' 17 %} Sair</button>
+    </form>
+  </header>
+  <main class="platform-main">
+    <div class="platform-intro">
+      <p class="eyebrow">GESTÃO DE CONTAS</p>
+      <h1 class="page-title">Administração da plataforma</h1>
+      <p class="subtitle">Crie e consulte os acessos operacionais do Nabio Office.</p>
+    </div>
+    {% for message in messages %}
+      {% if message.extra_tags == 'platform-account' %}<div class="message success" role="status">{{ message }}</div>{% endif %}
+    {% endfor %}
+    <div class="platform-grid">
+      <section class="panel platform-card" aria-labelledby="create-account">
+        <h2 id="create-account" class="section-title">Criar conta operacional</h2>
+        <p class="platform-description">A pessoa entra com o e-mail e a senha definidos aqui.</p>
+        <form method="post" action="{% url 'platform_admin' %}" class="platform-form">
+          {% csrf_token %}
+          {% if form.non_field_errors %}<div class="message error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+          {% for field in form %}
+            <div class="field">
+              {{ field.label_tag }}
+              {{ field }}
+              {% if field.help_text %}<small id="{{ field.auto_id }}_helptext">{{ field.help_text }}</small>{% endif %}
+              {{ field.errors }}
+            </div>
+          {% endfor %}
+          <button class="btn primary" type="submit">{% icon 'plus' 17 %} Criar usuário</button>
+        </form>
+      </section>
+      <section class="panel platform-card" aria-labelledby="operational-accounts">
+        <div class="platform-accounts-heading">
+          <h2 id="operational-accounts" class="section-title">Contas operacionais</h2>
+          <span class="pill">{{ accounts.paginator.count }}</span>
+        </div>
+        {% if accounts %}
+          <ul class="platform-accounts">
+            {% for account in accounts %}
+              <li>
+                <div><strong>{{ account.first_name|default:account.username }}</strong><span>{{ account.email|default:'E-mail não cadastrado' }}</span></div>
+                {% if account.is_active %}<span class="status status-approved">Ativa</span>{% else %}<span class="status">Inativa</span>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+          {% if accounts.has_other_pages %}
+            <nav class="pagination" aria-label="Páginas de contas">
+              {% if accounts.has_previous %}<a class="btn secondary" href="?page={{ accounts.previous_page_number }}">Anterior</a>{% endif %}
+              <span>{{ accounts.number }} de {{ accounts.paginator.num_pages }}</span>
+              {% if accounts.has_next %}<a class="btn secondary" href="?page={{ accounts.next_page_number }}">Próxima</a>{% endif %}
+            </nav>
+          {% endif %}
+        {% else %}<p class="platform-description">Ainda não há contas operacionais cadastradas.</p>{% endif %}
+      </section>
+    </div>
+  </main>
+</body>
+</html>

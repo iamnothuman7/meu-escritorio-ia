@@ -5,24 +5,68 @@
   <p class="muted">Modalidade selecionada <strong>{{ w.ai_mode|label }}</strong> · {% if provider_ready %}Disponível para execução{% else %}Aguardando configuração{% endif %}</p>
   <div class="notice">
     {% icon 'shield' %}
-    <p>{% if plan.connected %}<strong>Conta ChatGPT autorizada.</strong> Você pode usar o catálogo do plano neste espaço.{% else %}<strong>ChatGPT aguardando autorização.</strong> O proprietário conecta a conta no navegador e transfere a sessão ao servidor por SSH.{% endif %} As entregas entram na fila de revisão.</p>
+    <p>{% if plan.connected %}<strong>Plano ChatGPT autorizado.</strong> Você pode selecionar o plano e autorizar seu uso neste espaço.{% else %}<strong>Conecte sua própria conta de IA.</strong> Cadastre uma chave da OpenAI API ou da Claude API para gerar entregas com seus agentes.{% endif %} As entregas entram na fila de revisão.</p>
   </div>
-  <form hx-sync="this:drop" method="post" action="/settings/save/">
+
+  <section class="provider-credentials" aria-labelledby="api-credentials">
+    <h3 id="api-credentials">Chaves da sua conta</h3>
+    <p class="muted" id="provider-key-help">Use as chaves da sua conta de API. Elas podem ser usadas nas suas empresas, conforme o provedor e os limites que você configurar em cada espaço.</p>
+    <div class="provider-key-grid">
+      <form class="provider-key-card" hx-boost="false" method="post" action="/settings/save/" autocomplete="off" aria-labelledby="openai-key-title">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="api_key">
+        <input type="hidden" name="api_mode" value="openai">
+        <div class="provider-key-heading">
+          <h4 id="openai-key-title">OpenAI API</h4>
+          <span class="pill subtle">{% if openai_key %}Chave cadastrada{% else %}Sem chave{% endif %}</span>
+        </div>
+        <div class="field">
+          <label for="openai-api-key">{% if openai_key %}Nova chave da OpenAI{% else %}Chave da OpenAI{% endif %}</label>
+          <input type="password" id="openai-api-key" name="api_key" maxlength="2048" required autocomplete="new-password" autocapitalize="none" spellcheck="false" aria-describedby="provider-key-help">
+        </div>
+        <div class="form-actions provider-key-actions">
+          <button type="submit" class="btn secondary small">{% if openai_key %}Substituir chave{% else %}Salvar chave{% endif %}</button>
+          {% if openai_key %}<button type="submit" name="clear" value="1" formnovalidate class="btn danger small" aria-label="Remover chave da OpenAI">Remover chave</button>{% endif %}
+        </div>
+      </form>
+
+      <form class="provider-key-card" hx-boost="false" method="post" action="/settings/save/" autocomplete="off" aria-labelledby="claude-key-title">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="api_key">
+        <input type="hidden" name="api_mode" value="claude">
+        <div class="provider-key-heading">
+          <h4 id="claude-key-title">Claude API</h4>
+          <span class="pill subtle">{% if claude_key %}Chave cadastrada{% else %}Sem chave{% endif %}</span>
+        </div>
+        <div class="field">
+          <label for="claude-api-key">{% if claude_key %}Nova chave da Claude{% else %}Chave da Claude{% endif %}</label>
+          <input type="password" id="claude-api-key" name="api_key" maxlength="2048" required autocomplete="new-password" autocapitalize="none" spellcheck="false" aria-describedby="provider-key-help">
+        </div>
+        <div class="form-actions provider-key-actions">
+          <button type="submit" class="btn secondary small">{% if claude_key %}Substituir chave{% else %}Salvar chave{% endif %}</button>
+          {% if claude_key %}<button type="submit" name="clear" value="1" formnovalidate class="btn danger small" aria-label="Remover chave da Claude">Remover chave</button>{% endif %}
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <form class="provider-connection-form" hx-sync="this:drop" method="post" action="/settings/save/" aria-labelledby="provider-connection-title">
     {% csrf_token %}<input type="hidden" name="action" value="provider">
+    <h3 id="provider-connection-title">Provedor e limites desta empresa</h3>
     <div class="form-grid">
       <div class="field"><label>Modalidade<select name="ai_mode">
         <option value="offline" {% if w.ai_mode == 'offline' %}selected{% endif %}>Modo local</option>
-        <option value="chatgpt" {% if w.ai_mode == 'chatgpt' %}selected{% endif %} {% if not plan.connected and w.ai_mode != 'chatgpt' %}disabled{% endif %}>Plano ChatGPT</option>
+        <option value="chatgpt" {% if w.ai_mode == 'chatgpt' %}selected{% endif %} {% if not plan.connected and w.ai_mode != 'chatgpt' %}disabled{% endif %}>Plano ChatGPT{% if not plan.connected %} (indisponível){% endif %}</option>
         <option value="openai" {% if w.ai_mode == 'openai' %}selected{% endif %}>OpenAI API</option>
         <option value="claude" {% if w.ai_mode == 'claude' %}selected{% endif %}>Claude API</option>
       </select></label></div>
-      <div class="field"><label>Modelo<input name="ai_model" value="{{ w.ai_model }}" maxlength="160" placeholder="Escolha automática no plano ChatGPT"></label></div>
+      <div class="field"><label>Modelo<input name="ai_model" value="{{ w.ai_model }}" maxlength="160" placeholder="{% if plan.connected %}Automático para o plano ChatGPT{% else %}ID do modelo no provedor{% endif %}"></label></div>
     </div>
     {% if plan.connected %}<label class="checkbox"><input type="checkbox" name="plan_confirmed" {% if w.policy.chatgpt_confirmed %}checked{% endif %}>Autorizo o uso do meu plano e o envio do contexto necessário desta empresa ao ChatGPT.</label>
     <p class="muted">O Nabio Office limita o plano a 12 chamadas por dia, somadas entre suas empresas.</p>{% endif %}
-    <details>
+    <details {% if w.ai_mode == 'openai' or w.ai_mode == 'claude' %}open{% endif %}>
       <summary>Limites para OpenAI API e Claude API</summary>
-      <p class="muted">A chave é configurada no servidor. Informe os preços do modelo e o valor máximo que você autoriza para esta empresa.</p>
+      <p class="muted">Para usar uma chave, informe os preços do modelo e o valor máximo que você autoriza para esta empresa.</p>
       <div class="form-grid">
         <div class="field"><label>Teto autorizado (US$)<input type="number" step="0.01" min="0.01" name="limit_usd" value="{{ budget.limit_usd }}"></label></div>
         <div class="field"><label>Válido até<input type="date" name="expires_at" value="{{ budget.expires_at|slice:':10' }}"></label></div>

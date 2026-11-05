@@ -7,7 +7,7 @@
   <div class="page-heading">
     <div><p class="eyebrow">VISÃO GERAL</p><h1 class="page-title">Olá, {{ request.user.first_name|default:request.user.username }}.</h1><p class="subtitle">Prioridades, prazos e entregas do seu escritório.</p></div>
     <form hx-sync="this:drop" method="post" action="/office/pause/">
-      {% csrf_token %}<button class="btn ghost small">{% if state.paused %}{% icon 'play' 15 %}Retomar{% else %}{% icon 'pause' 15 %}Pausar escritório{% endif %}</button>
+      {% csrf_token %}<button class="btn ghost small">{% if w.paused %}{% icon 'play' 15 %}Retomar{% else %}{% icon 'pause' 15 %}Pausar escritório{% endif %}</button>
     </form>
   </div>
 

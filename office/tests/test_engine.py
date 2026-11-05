@@ -234,7 +234,7 @@ class EngineTests(TestCase):
         self.workspace.save()
         task = self.task()
         queue_task(task)
-        with patch("office.providers.generate") as generate:
+        with patch("office.providers.has_api_key", return_value=True), patch("office.providers.generate") as generate:
             process_one()
             generate.assert_not_called()
         task.refresh_from_db()
@@ -252,6 +252,10 @@ class EngineTests(TestCase):
         self.assertEqual(task.runs.get().agent_version, 1)
 
     def api_policy(self, **changes):
+        from unittest.mock import patch
+        availability = patch("office.providers.has_api_key", return_value=True)
+        availability.start()
+        self.addCleanup(availability.stop)
         budget = {"confirmed": True, "provider": "openai", "model": "explicit-model",
                   "expires_at": (timezone.now() + timedelta(days=1)).isoformat(), "limit_usd": "1.00",
                   "input_per_million": "1.00", "output_per_million": "2.00", "max_output_tokens": 1024,

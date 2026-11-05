@@ -367,7 +367,7 @@ def status():
         return {'connected': False, 'email': '', 'expires_at': None, 'owner_id': None}
 
 
-def _access_token():
+def _access_token(*, owner_id=None):
     directory = profile_directory()
     path = directory / 'session.json'
     if not path.is_file():
@@ -376,6 +376,8 @@ def _access_token():
         with _session_lock(directory):
             profile = _read_profile(path)
             _require_plan(profile)
+            if owner_id is not None and (type(owner_id) is not int or profile.get('owner_id') != owner_id):
+                raise PlanError('O plano ChatGPT não está autorizado para esta conta.')
             if profile['ext_agent_host_id'] != _host_id(directory):
                 raise PlanError('Importe a sessão para o identificador desta instalação.')
             if float(profile.get('expires_at', 0)) <= time.time() + 90:
@@ -407,8 +409,8 @@ def _models(token):
                 if isinstance(item, dict) and item.get('visibility') == 'list' and isinstance(item.get('slug'), str)]
 
 
-def list_models():
-    return _models(_access_token())
+def list_models(*, owner_id=None):
+    return _models(_access_token(owner_id=owner_id))
 
 
 def _inference_error(status_code, payload, *, uncertain=False):
@@ -485,8 +487,10 @@ def _stream_response(response, model):
     raise PlanError('A transmissão terminou antes de confirmar a entrega.', uncertain=True)
 
 
-def generate(model, instructions, prompt):
-    token = _access_token()
+def generate(model, instructions, prompt, *, owner_id):
+    if type(owner_id) is not int or owner_id < 1:
+        raise PlanError('O plano ChatGPT não está autorizado para esta conta.')
+    token = _access_token(owner_id=owner_id)
     if not model:
         choices = [item['slug'] for item in _models(token)]
         if not choices:

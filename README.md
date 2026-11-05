@@ -25,7 +25,7 @@ Python 3.11 ou posterior compatível com Django 5.2 é necessário. A primeira i
 
 ## O que está implementado
 
-- Login local, espaços por empresa, personalização de contexto e identidade.
+- Login com e-mail e senha, administração de contas e espaços por empresa.
 - Equipe visual, tarefas persistentes, histórico de execuções, entregas e revisão por hash.
 - Cadastros de leads, projetos e registros financeiros administrativos com valores em centavos.
 - Pausa, fila local, rotinas configuráveis e executor único.
@@ -36,7 +36,7 @@ O modo sem IA mantém organização e cálculos. Modelos locais de texto são id
 
 ## Conexões e limites reais
 
-As contas de IA não vêm conectadas. Os adaptadores só podem ser considerados homologados após uma execução autorizada com a conta do usuário. Nenhuma chamada paga é necessária para instalar ou executar os testes.
+Cada nova conta começa no modo local. Em **Configurações → Conexão de IA**, salve sua chave OpenAI API ou Claude API e defina o modelo e o limite de consumo da empresa. As chaves ficam protegidas por conta, fora do banco e dos backups.
 
 Para a instalação própria do proprietário, `python scripts/connect-chatgpt.py login` abre o consentimento oficial no navegador. No VPS, execute `python scripts/connect-chatgpt.py import --owner ID` como o usuário do serviço e envie o arquivo de sessão protegido pela entrada padrão do SSH. Preserve apenas a sessão ativa no VPS. Em **Configurações → Conexão de IA**, selecione **Plano ChatGPT** e autorize o espaço. A execução usa o catálogo da conta. O limite local é de 12 chamadas por dia somadas entre as empresas do proprietário. [Guia oficial de instalação em VM própria](https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms)
 
@@ -61,7 +61,7 @@ A apresentação pública está em `/`, o login em `/login/` e o escritório pro
 
 O manifesto e service worker preparam instalação PWA em navegadores compatíveis. Use a opção de instalar/adicionar à tela inicial do navegador. A interface funciona em tela independente, mas tarefas e alterações continuam exigindo conexão com o servidor. Somente arquivos públicos e a página offline genérica são armazenados no cache; páginas privadas e APIs não são cacheadas.
 
-Na instalação local sem usuário, abra `/setup/` uma vez para criar o administrador. Na hospedagem, a configuração do primeiro administrador é autorizada por link de ativação da instalação; a página pública e o login nunca redirecionam para esse setup.
+Na instalação sem usuários, a rota `/setup/` cria o primeiro acesso ao escritório. Em hospedagem, essa configuração inicial exige a autorização da instalação. Para habilitar a administração de contas, crie um usuário separado com `python manage.py createsuperuser` e use um e-mail no campo de usuário. Esse login abre `/administracao/`, onde o administrador cadastra contas com e-mail e senha. Cada conta recebe um escritório próprio com os agentes e as rotinas padrão.
 
 ## Interface dinâmica
 

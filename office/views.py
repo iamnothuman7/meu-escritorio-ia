@@ -7,6 +7,7 @@ import json
 import re
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
+from functools import wraps
 from pathlib import Path
 from xml.sax.saxutils import escape
 from urllib.parse import urlencode
@@ -16,16 +17,36 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.views import LoginView
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.views.decorators.debug import sensitive_post_parameters
 
 from .models import Agent, Approval, Delivery, Event, FinancialEntry, Lead, Project, Routine, Run, Settlement, SystemState, Task, Workspace
-from . import chatgpt_plan, services
+from . import chatgpt_plan, credentials, services
+
+
+def office_required(view):
+    @login_required
+    @wraps(view)
+    def dispatch(request, *args, **kwargs):
+        if request.user.is_superuser:
+            return redirect('platform_admin')
+        return view(request, *args, **kwargs)
+    return dispatch
+
+
+class OfficeLoginView(LoginView):
+    def get_success_url(self):
+        if self.request.user.is_superuser:
+            return reverse('platform_admin')
+        return super().get_success_url()
 
 
 def health(request):
@@ -95,8 +116,7 @@ def setup(request):
 
 
 def login_route(request):
-    from django.contrib.auth.views import LoginView
-    return LoginView.as_view(template_name='office/auth.html',extra_context={'hosted':os.environ.get('NABI_HTTPS')=='1'})(request)
+    return OfficeLoginView.as_view(template_name='office/auth.html',extra_context={'hosted':os.environ.get('NABI_HTTPS')=='1'})(request)
 
 
 def active_workspace(request):
@@ -123,7 +143,7 @@ def context(request, page):
     return {'w':w,'workspaces':Workspace.objects.filter(owner=request.user),'agents':agents,'all_agents':agents,'page':page,'pending_count':Approval.objects.filter(workspace=w,status='pending',expires_at__gt=timezone.now()).count(),'state':state,'worker_online':worker_online,'now':timezone.localtime(),'offline':w.ai_mode == 'offline','hosted':os.environ.get('NABI_HTTPS')=='1','is_htmx':is_htmx,'base_template':'office/shell.html' if is_htmx else 'office/base.html'}
 
 
-@login_required
+@office_required
 def dashboard(request):
     c = context(request, 'today')
     w = c['w']
@@ -132,12 +152,12 @@ def dashboard(request):
     return render(request, 'office/dashboard.html', c)
 
 
-@login_required
+@office_required
 def team(request):
     return render(request, 'office/team.html', context(request, 'team'))
 
 
-@login_required
+@office_required
 def tasks(request):
     c = context(request, 'tasks')
     items = Task.objects.filter(workspace=c['w']).select_related('agent').order_by('-created_at')
@@ -155,7 +175,7 @@ def record_event(w, kind, message, task=None):
     Event.objects.create(workspace=w,kind=kind,message=message,task=task)
 
 
-@login_required
+@office_required
 @require_POST
 def create_task(request):
     w = active_workspace(request)
@@ -189,7 +209,7 @@ def create_task(request):
         return redirect('/tasks/')
 
 
-@login_required
+@office_required
 def task_detail(request, pk):
     c = context(request,'tasks')
     task = get_object_or_404(Task,pk=pk,workspace=c['w'])
@@ -197,7 +217,7 @@ def task_detail(request, pk):
     return render(request,'office/task_detail.html',c)
 
 
-@login_required
+@office_required
 @require_POST
 def task_action(request, pk):
     w = active_workspace(request)
@@ -220,7 +240,7 @@ def task_action(request, pk):
     return redirect(f'/tasks/{task.pk}/')
 
 
-@login_required
+@office_required
 def approvals(request):
     c = context(request,'approvals')
     items = list(Approval.objects.filter(workspace=c['w'],status='pending',expires_at__gt=timezone.now())
@@ -231,7 +251,7 @@ def approvals(request):
     return render(request,'office/approvals.html',c)
 
 
-@login_required
+@office_required
 @require_POST
 def decision(request, pk):
     w = active_workspace(request)
@@ -244,7 +264,7 @@ def decision(request, pk):
     return redirect('/approvals/')
 
 
-@login_required
+@office_required
 @require_POST
 def edit_delivery(request, pk):
     w = active_workspace(request)
@@ -266,7 +286,7 @@ def edit_delivery(request, pk):
     return redirect(f'/tasks/{delivery.task_id}/')
 
 
-@login_required
+@office_required
 def download_delivery(request, pk):
     delivery = get_object_or_404(Delivery,pk=pk,workspace=active_workspace(request))
     response = HttpResponse(delivery.body, content_type='text/plain; charset=utf-8')
@@ -274,7 +294,7 @@ def download_delivery(request, pk):
     return response
 
 
-@login_required
+@office_required
 def work(request):
     c = context(request,'work')
     tab = request.GET.get('tab','content')
@@ -299,7 +319,7 @@ def cents(value):
     return int(value*100)
 
 
-@login_required
+@office_required
 @require_POST
 def work_action(request):
     w = active_workspace(request)
@@ -395,19 +415,21 @@ def work_action(request):
     return redirect('/work/?tab='+tab)
 
 
-@login_required
+@office_required
 def settings_view(request):
     c=context(request,'settings')
     c['budget']=c['w'].policy.get('budget',{})
-    c['data_dir']=str(settings.DATA_DIR)
     c['usage']=Run.objects.filter(task__workspace=c['w']).order_by('-started_at')[:20]
     c['plan']=services.plan_connection(c['w'])
     c['provider_ready']=services.provider_ready(c['w'])
+    c['openai_key']=credentials.has_api_key(request.user.pk,'openai')
+    c['claude_key']=credentials.has_api_key(request.user.pk,'claude')
     return render(request,'office/settings.html',c)
 
 
-@login_required
+@office_required
 @require_POST
+@sensitive_post_parameters('api_key')
 def settings_action(request):
     w=active_workspace(request)
     action=request.POST.get('action')
@@ -444,6 +466,17 @@ def settings_action(request):
             agent.enabled=bool(request.POST.get('enabled'))
             agent.version+=1
             agent.save()
+        elif action=='api_key':
+            mode=request.POST.get('api_mode','')
+            if mode not in ('openai','claude'):
+                raise ValueError('Escolha OpenAI API ou Claude API.')
+            if request.POST.get('clear')=='1':
+                credentials.delete_api_key(request.user.pk,mode)
+                messages.success(request,'Chave removida da sua conta.')
+            else:
+                credentials.save_api_key(request.user.pk,mode,request.POST.get('api_key',''))
+                messages.success(request,'Chave salva na sua conta.')
+            return redirect('/settings/#connections')
         elif action=='provider':
             mode=request.POST.get('ai_mode','offline')
             if mode not in ['offline','chatgpt','openai','claude']: raise ValueError('Escolha uma modalidade válida.')
@@ -453,7 +486,7 @@ def settings_action(request):
                     raise ValueError('A conta ChatGPT ainda precisa ser autorizada pelo proprietário.')
                 if not request.POST.get('plan_confirmed'):
                     raise ValueError('Autorize a geração com o plano ChatGPT para esta empresa.')
-                models=chatgpt_plan.list_models()
+                models=chatgpt_plan.list_models(owner_id=w.owner_id)
                 if not model:
                     model=models[0]['slug'] if models else ''
                 if not any(item['slug']==model for item in models):
@@ -468,7 +501,7 @@ def settings_action(request):
                 budget={key:request.POST.get(key,'') for key in ['expires_at','limit_usd','input_per_million','output_per_million']}
                 for key in ['limit_usd','input_per_million','output_per_million']:
                     n=Decimal(budget[key])
-                    if not n.is_finite() or n<0: raise ValueError('Valores de política inválidos.')
+                    if not n.is_finite() or n<0 or (key=='limit_usd' and n==0): raise ValueError('Valores de política inválidos.')
                 expires=date.fromisoformat(budget['expires_at'])
                 if expires<=timezone.localdate(): raise ValueError('A validade precisa ser futura.')
                 budget['expires_at']=timezone.make_aware(timezone.datetime.combine(expires,timezone.datetime.min.time())).isoformat()
@@ -484,7 +517,7 @@ def settings_action(request):
     return redirect('/settings/')
 
 
-@login_required
+@office_required
 @require_POST
 def switch_workspace(request):
     w=get_object_or_404(Workspace,pk=request.POST.get('workspace'),owner=request.user)
@@ -492,24 +525,25 @@ def switch_workspace(request):
     return redirect('/app/')
 
 
-@login_required
+@office_required
 @require_POST
 def pause(request):
-    state,_=SystemState.objects.get_or_create(pk=1)
-    state.paused=not state.paused
-    state.save()
-    record_event(active_workspace(request),'office.paused' if state.paused else 'office.resumed','Escritório pausado.' if state.paused else 'Escritório retomado.')
+    w=active_workspace(request)
+    with transaction.atomic():
+        Workspace.objects.filter(pk=w.pk,owner=request.user).update(paused=~F('paused'))
+        w.refresh_from_db(fields=['paused'])
+        record_event(w,'office.paused' if w.paused else 'office.resumed','Escritório pausado.' if w.paused else 'Escritório retomado.')
     return redirect(request.POST.get('return_to') if request.POST.get('return_to') in ['/app/','/tasks/','/settings/'] else '/app/')
 
 
-@login_required
+@office_required
 def logo(request, pk):
     w=get_object_or_404(Workspace,pk=pk,owner=request.user)
     if not w.logo: raise Http404()
     return FileResponse(w.logo.open('rb'),content_type='image/png' if w.logo.name.lower().endswith('.png') else 'image/jpeg')
 
 
-@login_required
+@office_required
 def export_data(request):
     w=active_workspace(request)
     from django.core.serializers import serialize
@@ -527,17 +561,17 @@ def export_data(request):
     return response
 
 
-@login_required
+@office_required
 @require_POST
 def backup_download(request):
-    if not request.user.is_staff:
+    if settings.HTTPS_ENABLED or not request.user.is_staff:
         return HttpResponse('O backup completo exige acesso de administrador da instalação.',status=403)
     from .backup import create_backup
     path=create_backup()
     return FileResponse(open(path,'rb'),as_attachment=True,filename=Path(path).name)
 
 
-@login_required
+@office_required
 def post_art(request, pk):
     w=active_workspace(request)
     d=get_object_or_404(Delivery,pk=pk,workspace=w,kind='content')
@@ -552,7 +586,7 @@ def post_art(request, pk):
     return response
 
 
-@login_required
+@office_required
 def api_dashboard(request):
     w=active_workspace(request)
-    return JsonResponse({'workspace':str(w.pk),'tasks':list(Task.objects.filter(workspace=w).values('id','title','status')[:100]),'pending':Approval.objects.filter(workspace=w,status='pending').count(),'paused':SystemState.objects.filter(pk=1,paused=True).exists()})
+    return JsonResponse({'workspace':str(w.pk),'tasks':list(Task.objects.filter(workspace=w).values('id','title','status')[:100]),'pending':Approval.objects.filter(workspace=w,status='pending').count(),'paused':services.is_paused(w)})

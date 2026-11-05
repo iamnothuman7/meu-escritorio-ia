@@ -103,8 +103,11 @@ class ChatGPTPlanTests(SimpleTestCase):
             with self.assertRaises(plan.PlanError):
                 plan.import_profile(json.dumps(source).encode(), owner_id=8)
             with patch.object(plan, '_token', return_value={**TOKENS, 'access_token': 'rotated-test-access', 'refresh_token': 'rotated-test-refresh'}) as renew:
-                self.assertEqual(plan._access_token(), 'rotated-test-access')
-                self.assertEqual(plan._access_token(), 'rotated-test-access')
+                with self.assertRaises(plan.PlanError):
+                    plan._access_token(owner_id=8)
+                renew.assert_not_called()
+                self.assertEqual(plan._access_token(owner_id=7), 'rotated-test-access')
+                self.assertEqual(plan._access_token(owner_id=7), 'rotated-test-access')
             renew.assert_called_once()
             self.assertEqual(plan._read_profile(path)['refresh_token'], 'rotated-test-refresh')
             with self.assertRaises(plan.PlanError):
@@ -116,7 +119,7 @@ class ChatGPTPlanTests(SimpleTestCase):
                      'output': [{'type': 'message', 'content': [{'type': 'output_text', 'text': 'Rascunho de teste'}]}]}}
         response.iter_lines.return_value = [b'data: ' + json.dumps(completed).encode(), b'']
         with patch.object(plan, '_access_token', return_value='test-access'), patch.object(plan, '_http', return_value=response) as request:
-            result = plan.generate('gpt-6.1-sol', 'Instruções', 'Pedido')
+            result = plan.generate('gpt-6.1-sol', 'Instruções', 'Pedido', owner_id=7)
         self.assertEqual(result['body'], 'Rascunho de teste')
         sent = request.call_args.kwargs['json']
         self.assertTrue(sent['stream'])
