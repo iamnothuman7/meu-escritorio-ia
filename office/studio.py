@@ -2,7 +2,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_safe
 
 from .studio_scope import supports_studio
-from .views import active_workspace, office_required
+from .views import active_workspace, context, office_required
 
 
 @office_required
@@ -11,4 +11,4 @@ def office_3d(request):
     workspace = active_workspace(request)
     if not supports_studio(workspace):
         return redirect('office_selector')
-    return render(request, 'office/studio.html', {'workspace': workspace})
+    return render(request, 'office/studio.html', {**context(request, 'studio'), 'workspace': workspace})

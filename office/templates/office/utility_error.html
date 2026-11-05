@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="pt-BR" data-claw-theme>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B1118">
+  <title>{% block title %}Aviso{% endblock %} · Nabio Office</title>
+  <link rel="icon" href="{% static 'office/brand/icon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'office/claw-theme.css' %}">
+  <link rel="stylesheet" href="{% static 'office/claw-utility.css' %}">
+</head>
+<body class="claw-utility-page">
+  <header class="utility-header">
+    <div class="utility-header-inner">
+      <a class="utility-brand" href="/" aria-label="Nabio Office, início"><img src="{% static 'office/brand/icon.svg' %}" width="30" height="30" alt="">Nabio Office</a>
+    </div>
+  </header>
+  <main class="utility-notice-layout">
+    <section class="utility-panel utility-notice" aria-labelledby="error-title">
+      <p class="utility-kicker">{% block status %}{% endblock %}</p>
+      <h1 id="error-title">{% block heading %}{% endblock %}</h1>
+      <p class="utility-description">{% block description %}{% endblock %}</p>
+      <a class="utility-button utility-button--primary" href="/">Voltar ao início</a>
+    </section>
+  </main>
+</body>
+</html>

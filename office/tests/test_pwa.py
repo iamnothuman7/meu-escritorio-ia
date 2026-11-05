@@ -25,8 +25,8 @@ class PublicPwaTests(TestCase):
         self.assertEqual(manifest['start_url'], '/escritorios/')
         self.assertEqual(manifest['scope'], '/')
         self.assertEqual(manifest['display'], 'standalone')
-        self.assertEqual(manifest['theme_color'], '#0B1020')
-        self.assertEqual(manifest['background_color'], '#0B1020')
+        self.assertEqual(manifest['theme_color'], '#0b1118')
+        self.assertEqual(manifest['background_color'], '#0b1118')
         self.assertNotIn('private-owner-marker', response.content.decode())
         by_size = {icon['sizes']: icon for icon in manifest['icons']}
         for expected in (192, 512):

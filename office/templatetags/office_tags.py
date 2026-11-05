@@ -38,6 +38,7 @@ def icon(name, size=20):
     paths = {
       'home':'M3 10 12 3l9 7v10H3Z M9 20v-7h6v7',
       'team':'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M17 4a4 4 0 0 1 0 8 M22 21v-2a4 4 0 0 0-3-4',
+      'user':'M20 21v-2a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
       'work':'M3 7h18v14H3Z M8 7V3h8v4 M3 12h18 M10 12v3h4v-3',
       'check':'m5 12 4 4L19 6',
       'approval':'M9 3H5v18h14V3h-4 M9 2h6v4H9Z m-1 12 3 3 5-6',

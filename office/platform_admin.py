@@ -9,7 +9,6 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from django.http import HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
@@ -76,7 +75,7 @@ class CreateOperationalUserForm(forms.Form):
 def platform_admin(request):
     user = request.user
     if not (user.is_active and user.is_staff and user.is_superuser):
-        return HttpResponseForbidden("Acesso restrito à administração da plataforma.")
+        return render(request, '403.html', status=403)
 
     form = CreateOperationalUserForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():

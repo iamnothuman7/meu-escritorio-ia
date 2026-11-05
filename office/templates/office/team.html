@@ -3,15 +3,29 @@
 {% block title %}Equipe{% endblock %}
 {% block content %}
 <div id="team-live">
-  <span class="live-poller" data-live-refresh aria-hidden="true" hx-get="/team/" hx-trigger="every 15s" hx-target="#team-live" hx-select="#team-live" hx-swap="outerHTML" hx-select-oob="#approval-count"></span>
+  <span class="live-poller" data-live-refresh aria-hidden="true" hx-get="/team/{% if selected_agent %}?agent={{ selected_agent.pk }}{% endif %}" hx-trigger="every 15s" hx-target="#team-live" hx-select="#team-live" hx-swap="outerHTML" hx-select-oob="#approval-count"></span>
   <div class="page-heading">
     <div><p class="eyebrow">EQUIPE</p><h1 class="page-title">Agentes de {{ w.name }}</h1><p class="subtitle">Consulte as funções, o trabalho em andamento e a última entrega de cada agente.</p></div>
     <a href="/settings/#agents" class="btn secondary">{% icon 'settings' 17 %} Personalizar equipe</a>
   </div>
-  <div class="team-grid">{% for agent in agents %}{% include 'office/agent_card.html' %}{% endfor %}</div>
-  <section class="panel panel-body">
-    <h2 class="section-title">Perfis de desenvolvimento</h2>
-    <p class="muted">Ative Pixel e Byte em Configurações para delegar tarefas de front-end e back-end. As entregas ficam disponíveis como código para revisão.</p>
-  </section>
+  <div class="claw-inspector">
+    <nav class="panel claw-inspector__rail" aria-label="Selecionar agente">
+      <h2>Agentes ({{ agents|length }})</h2>
+      {% for agent in agents %}
+      <a href="/team/?agent={{ agent.pk }}"{% if agent.pk == selected_agent.pk %} aria-current="true"{% endif %}>
+        <span class="claw-inspector__avatar" style="--agent-color:{{ agent.color }}" aria-hidden="true">{{ agent.name|first|upper }}</span>
+        <span><strong>{{ agent.name }}</strong><small>{{ agent.role }}</small></span>
+        <span class="status{% if agent.current_task %} status-{{ agent.current_task.status }}{% endif %}">{% if not agent.enabled %}Desativado{% elif agent.current_task %}{{ agent.current_task.status|label }}{% else %}Disponível{% endif %}</span>
+      </a>
+      {% endfor %}
+    </nav>
+    {% if selected_agent %}
+    <section class="panel panel-body claw-inspector__main" aria-labelledby="agent-inspector-title">
+      <div class="section-heading"><div><p class="eyebrow">PERFIL DO AGENTE</p><h2 id="agent-inspector-title">{{ selected_agent.name }} · {{ selected_agent.role }}</h2></div><span class="status">V{{ selected_agent.version }}</span></div>
+      {% include 'office/agent_card.html' with agent=selected_agent %}
+      {% if selected_agent.last_delivery %}<a class="btn secondary small" href="/tasks/{{ selected_agent.last_delivery.task_id }}/">{% icon 'work' 16 %} Abrir última entrega</a>{% endif %}
+    </section>
+    {% else %}<section class="panel empty"><h2>Nenhum agente cadastrado</h2><a class="btn secondary" href="/settings/#agents">Configurar equipe</a></section>{% endif %}
+  </div>
 </div>
 {% endblock %}

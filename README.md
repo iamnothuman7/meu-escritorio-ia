@@ -76,3 +76,5 @@ A vista é habilitada por empresa com `python manage.py set_office_studio --work
 A navegação do escritório, os formulários e os filtros usam HTMX servido pelo próprio aplicativo. Tarefas em execução atualizam a entrega a cada 5 segundos; Hoje/Equipe atualizam seus registros a cada 15 segundos. A consulta pausa com a aba oculta, diálogo aberto ou campo em edição, e preserva formulários alterados. Download, backup, saída e autenticação mantêm navegação nativa. O histórico do HTMX não guarda páginas privadas no localStorage. Detalhes e referências oficiais em [HTMX](docs/HTMX.md).
 
 O login e a cena respeitam a preferência por menos movimento. Barras de rolagem ficam ocultas, preservando rolagem por mouse, toque e teclado.
+
+O login, o seletor, o painel e as telas de suporte usam os mesmos tokens do tema escuro do Claw3D, adaptados à NaBio. A navegação interna é compartilhada entre a planta 3D e as telas de trabalho. Bebas Neue, IBM Plex Sans e IBM Plex Mono são servidas localmente, com os avisos de licença em `office/static/office/fonts/`.

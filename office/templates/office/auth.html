@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <meta name="theme-color" content="#0B1020">
+  <meta name="theme-color" content="#0B1118">
   <meta name="description" content="Acesse sua equipe, suas tarefas e suas aprovações no Nabio Office.">
   <title>{% if setup %}Configure seu escritório{% else %}Entrar{% endif %} · Nabio Office</title>
-  <link rel="preload" href="{% static 'office/fonts/Inter-latin.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'office/claw-theme.css' %}">
   <link rel="stylesheet" href="{% static 'office/auth.css' %}">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="{% static 'office/brand/icon.svg' %}" type="image/svg+xml">
@@ -25,10 +25,9 @@
       {% if setup %}
       <div class="story-main">
         <p class="eyebrow"><span></span> SEU ESCRITÓRIO DIGITAL</p>
-        <h2 id="story-title">Um lugar para<br>o trabalho <em>acontecer.</em></h2>
+        <h2 id="story-title">Prepare seu espaço de trabalho</h2>
         <p class="story-description">Organize as tarefas de cada empresa, acompanhe sua equipe e revise as entregas em um só lugar.</p>
         <div class="office-illustration" aria-hidden="true">
-          <div class="illustration-orbit"></div>
           <div class="illustration-head"><span>Do pedido à decisão</span><span>✦</span></div>
           <div class="illustration-step"><span class="step-icon">{% icon 'work' 17 %}</span><span><small>01 / PLANEJAMENTO</small><strong>Organize a demanda</strong></span></div>
           <div class="illustration-step"><span class="step-icon">{% icon 'team' 17 %}</span><span><small>02 / EXECUÇÃO</small><strong>Acompanhe a equipe</strong></span></div>
@@ -40,8 +39,8 @@
     <section class="auth-access" aria-labelledby="access-title">
       {% if setup %}<a class="back-link" href="{% url 'home' %}">{% icon 'arrow' 16 %}<span>Voltar ao login</span></a>{% endif %}
       <div class="access-card">
+        <div class="auth-access-status"><p class="eyebrow"><span aria-hidden="true"></span>{% if setup %}Configuração inicial{% else %}Acesso ao escritório{% endif %}</p></div>
         <div class="access-intro">
-          <p class="eyebrow">{% if setup %}CONFIGURAÇÃO INICIAL{% else %}ACESSO AO ESCRITÓRIO{% endif %}</p>
           <h1 id="access-title">{% if setup %}Configure seu escritório{% else %}Entrar no Nabio Office{% endif %}</h1>
           <p class="access-description">{% if setup %}Crie seu usuário para começar a configurar suas empresas e sua equipe.{% else %}Use o e-mail ou usuário da sua conta.{% endif %}</p>
         </div>

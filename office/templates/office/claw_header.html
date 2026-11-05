@@ -1,0 +1,40 @@
+{% load static office_tags %}
+<header class="topbar claw-header" aria-label="Barra do Nabio Office">
+  <a class="claw-brand" href="{% url 'office_selector' %}" hx-boost="false" aria-label="Nabio Office · escolher escritório">
+    <img src="{% static 'office/brand/icon.svg' %}" width="30" height="30" alt="">
+    <span>Nabio Office</span>
+  </a>
+  <form hx-sync="this:drop" class="workspace-switch claw-workspace" method="post" action="{% url 'workspace_switch' %}">
+    {% csrf_token %}
+    <label for="workspace-select" class="sr-only">Empresa ativa</label>
+    {% if w.logo %}<img src="/logo/{{ w.pk }}/" alt="" width="32" height="20">{% else %}{% icon 'grid' 16 %}{% endif %}
+    <select id="workspace-select" name="workspace" data-autosubmit>
+      {% for space in workspaces %}<option value="{{ space.pk }}"{% if space.pk == w.pk %} selected{% endif %}>{{ space.name }}</option>{% endfor %}
+    </select>
+  </form>
+  <form hx-sync="this:drop" class="search-box" method="get" action="/tasks/">
+    {% icon 'search' 17 %}<input aria-label="Buscar tarefas" name="q" placeholder="Buscar tarefas…" value="{{ q }}"><kbd>/</kbd>
+  </form>
+  <div class="claw-header__actions">
+    <button type="button" class="btn secondary small install-compact" data-install hidden aria-label="Instalar aplicativo">{% icon 'download' 16 %}<span>Instalar</span></button>
+    <a class="claw-runtime" href="/settings/#connections" aria-label="Inteligência · {{ w.ai_mode|label }}"><span class="status-dot {% if offline %}off{% endif %}"></span><span>{{ w.ai_mode|label }}</span></a>
+    <button type="button" class="btn primary small" data-open="new-task" aria-label="Nova tarefa">{% icon 'plus' 17 %}<span>Nova tarefa</span></button>
+    <details class="claw-account">
+      <summary aria-label="Menu da conta">{% icon 'user' 17 %}</summary>
+      <div class="claw-account__menu">
+        <strong>{{ request.user.first_name|default:request.user.username }}</strong>
+        <a href="{% url 'office_selector' %}" hx-boost="false">{% icon 'grid' 16 %} Trocar de escritório</a>
+        <form hx-sync="this:drop" method="post" action="{% url 'logout' %}" hx-boost="false">{% csrf_token %}<button type="submit">{% icon 'logout' 16 %} Sair</button></form>
+      </div>
+    </details>
+  </div>
+</header>
+<nav class="claw-dock" aria-label="Áreas do escritório">
+  {% if studio_enabled %}<a class="claw-tab{% if page == 'studio' %} is-active{% endif %}" href="{% url 'office_3d' %}" hx-boost="false"{% if page == 'studio' %} aria-current="page"{% endif %}>{% icon 'grid' 16 %}<span>Escritório 3D</span></a>{% endif %}
+  <a class="claw-tab{% if page == 'today' %} is-active{% endif %}" href="/app/"{% if page == 'today' %} aria-current="page"{% endif %}>{% icon 'home' 16 %}<span>Visão geral</span></a>
+  <a class="claw-tab{% if page == 'team' %} is-active{% endif %}" href="/team/"{% if page == 'team' %} aria-current="page"{% endif %}>{% icon 'team' 16 %}<span>Agentes</span></a>
+  <a class="claw-tab{% if page == 'tasks' %} is-active{% endif %}" href="/tasks/"{% if page == 'tasks' %} aria-current="page"{% endif %}>{% icon 'work' 16 %}<span>Tarefas</span></a>
+  <a class="claw-tab{% if page == 'approvals' %} is-active{% endif %}" href="/approvals/"{% if page == 'approvals' %} aria-current="page"{% endif %}>{% icon 'approval' 16 %}<span>Aprovações</span><span id="approval-count" class="badge"{% if not pending_count %} hidden{% endif %}>{{ pending_count }}</span></a>
+  <a class="claw-tab{% if page == 'work' %} is-active{% endif %}" href="/work/"{% if page == 'work' %} aria-current="page"{% endif %}>{% icon 'clock' 16 %}<span>Trabalho</span></a>
+  <a class="claw-tab{% if page == 'settings' %} is-active{% endif %}" href="/settings/"{% if page == 'settings' %} aria-current="page"{% endif %}>{% icon 'settings' 16 %}<span>Configurações</span></a>
+</nav>

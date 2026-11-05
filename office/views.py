@@ -61,7 +61,7 @@ def health(request):
 
 
 def webmanifest(request):
-    response=JsonResponse({'id':'/','name':'Nabio Office','short_name':'Nabio Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':reverse('office_selector'),'scope':'/','display':'standalone','background_color':'#0B1020','theme_color':'#0B1020','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
+    response=JsonResponse({'id':'/','name':'Nabio Office','short_name':'Nabio Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':reverse('office_selector'),'scope':'/','display':'standalone','background_color':'#0b1118','theme_color':'#0b1118','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
     return response
 
 
@@ -180,7 +180,12 @@ def dashboard(request):
 
 @office_required
 def team(request):
-    return render(request, 'office/team.html', context(request, 'team'))
+    c = context(request, 'team')
+    requested = request.GET.get('agent', '')
+    c['selected_agent'] = next((agent for agent in c['agents'] if str(agent.pk) == requested), None)
+    if c['selected_agent'] is None and c['agents']:
+        c['selected_agent'] = c['agents'][0]
+    return render(request, 'office/team.html', c)
 
 
 @office_required
