@@ -6,9 +6,15 @@ from urllib.request import Request, urlopen
 
 
 class ProviderError(Exception):
-    def __init__(self, message, uncertain=False):
+    def __init__(self, message, uncertain=False, code=""):
         super().__init__(message)
         self.uncertain = uncertain
+        self.code = code
+
+
+def has_api_key(mode):
+    variable = {"openai": "OPENAI_API_KEY", "claude": "ANTHROPIC_API_KEY"}.get(mode)
+    return bool(variable and os.environ.get(variable, "").strip())
 
 
 def _post(url, payload, headers):
@@ -70,7 +76,12 @@ def generate(mode, model, instructions, prompt, max_output_tokens=1024):
             "request_id": response.get("id", ""),
         }}
     elif mode == "chatgpt":
-        raise ProviderError("O login oficial ChatGPT ainda não foi configurado e homologado nesta instalação. Nenhuma chamada foi realizada.")
+        from . import chatgpt_plan
+
+        try:
+            result = chatgpt_plan.generate(model, instructions, prompt)
+        except chatgpt_plan.PlanError as exc:
+            raise ProviderError(str(exc), uncertain=exc.uncertain, code=exc.code) from None
     else:
         raise ProviderError("Sem IA conectada. Use uma rotina local ou configure um provedor explicitamente.")
     if not result["body"].strip():

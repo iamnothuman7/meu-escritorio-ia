@@ -1,1 +1,32 @@
-{% load static %}<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ativação privada · NABIO Office AI</title><link rel="stylesheet" href="{% static 'office/app.css' %}"></head><body class="auth-page"><main class="auth-shell"><section class="auth-visual"><img src="{% static 'office/brand/logo-horizontal.svg' %}" alt="NABIO Office AI" style="width:75%;margin:24px 0"><img src="{% static 'office/office-scene.svg' %}" alt="Escritório virtual em pixel art"></section><section class="auth-card"><p class="eyebrow">SEU ESPAÇO ESTÁ RESERVADO</p><h1>Seu próximo capítulo começa aqui.</h1><p class="subtitle">A primeira configuração exige o link privado de ativação fornecido ao proprietário. Abra esse link para criar seu usuário e sua senha.</p><p class="muted">Depois da ativação, você poderá entrar normalmente por este endereço.</p></section></main></body></html>
+{% load static office_tags %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F8F7F4">
+  <title>Ativação privada · Nabio Office</title>
+  <link rel="icon" href="{% static 'office/brand/icon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'office/auth.css' %}">
+</head>
+<body class="auth-page">
+  <main class="auth-layout">
+    <section class="auth-story" aria-labelledby="activation-title">
+      <a class="auth-brand" href="/" aria-label="Nabio Office, voltar ao início">
+        <span class="auth-brand-mark" aria-hidden="true"><img src="{% static 'office/brand/icon.svg' %}" width="24" height="24" alt=""></span><span>Nabio Office</span>
+      </a>
+      <div class="story-main"><p class="eyebrow">CONFIGURAÇÃO DO ESCRITÓRIO</p><h1 id="activation-title">Ative seu espaço de trabalho.</h1></div>
+    </section>
+    <section class="auth-access" aria-labelledby="access-title">
+      <a class="back-link" href="/">{% icon 'arrow' 16 %}<span>Voltar ao início</span></a>
+      <div class="access-card">
+        <div class="access-intro">
+          <p class="eyebrow">ATIVAÇÃO PRIVADA</p>
+          <h2 id="access-title">Abra seu link de ativação.</h2>
+          <p class="access-description">Use o link enviado ao proprietário para criar o primeiro usuário e a senha. Após ativar o escritório, entre com esses dados.</p>
+        </div>
+        <a class="submit-button" href="/login/"><span>Ir para o login</span><span class="button-arrow">{% icon 'arrow' 19 %}</span></a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

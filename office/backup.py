@@ -50,6 +50,16 @@ def create_backup(output_path=None, database_path=None, media_root=None) -> Path
         with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as source:
             with closing(sqlite3.connect(snapshot)) as destination:
                 source.backup(destination)
+                session_table = destination.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='django_session'"
+                ).fetchone()
+                if session_table:
+                    # Session keys are bearer credentials. Remove their bytes from
+                    # the snapshot, including rows deleted before this backup.
+                    destination.execute("PRAGMA secure_delete=ON")
+                    destination.execute("DELETE FROM django_session")
+                    destination.commit()
+                    destination.execute("VACUUM")
         _validate_database(snapshot)
         files = {"office.sqlite3": snapshot}
         if media.exists():

@@ -25,21 +25,21 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import Agent, Approval, Delivery, Event, FinancialEntry, Lead, Project, Routine, Run, Settlement, SystemState, Task, Workspace
-from . import services
+from . import chatgpt_plan, services
 
 
 def health(request):
-    return JsonResponse({'status': 'ok', 'product': 'Nabi Office'})
+    return JsonResponse({'status': 'ok', 'product': 'Nabio Office'})
 
 
 def landing(request):
-    message='Olá! Conheci o NABIO Office AI e gostaria de saber como posso usar esse escritório de inteligência artificial na minha empresa. Pode me explicar como funciona?'
+    message='Olá! Conheci o Nabio Office e gostaria de saber como posso usar esse escritório de inteligência artificial na minha empresa. Pode me explicar como funciona?'
     team=[{'name':name,'role':role,'avatar':i} for i,(name,role) in enumerate([('Atlas','Gestão e coordenação'),('Radar','Prospecção e pesquisa'),('Elo','Comercial e propostas'),('Luma','Marketing e conteúdo'),('Cora','Financeiro e análise'),('Nexo','Projetos e operações')])]
     return render(request,'office/landing.html',{'whatsapp_url':'https://wa.me/5588992745456?'+urlencode({'text':message}),'team_preview':team})
 
 
 def webmanifest(request):
-    response=JsonResponse({'id':'/','name':'NABIO Office AI','short_name':'NABIO Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':'/app/','scope':'/','display':'standalone','background_color':'#0B1020','theme_color':'#0B1020','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
+    response=JsonResponse({'id':'/','name':'Nabio Office','short_name':'Nabio Office','description':'Seu escritório de inteligência artificial. Empresas, equipe e decisões em um só lugar.','lang':'pt-BR','start_url':'/app/','scope':'/','display':'standalone','background_color':'#F8F7F4','theme_color':'#F8F7F4','icons':[{'src':'/static/office/brand/icon-192.png','sizes':'192x192','type':'image/png','purpose':'any'},{'src':'/static/office/brand/icon-512.png','sizes':'512x512','type':'image/png','purpose':'any'}]},content_type='application/manifest+json')
     return response
 
 
@@ -85,7 +85,7 @@ def setup(request):
                     return redirect('/login/')
                 user.set_password(password)
                 user.save()
-                workspace = services.bootstrap_workspace(user, name='Nabi Office')
+                workspace = services.bootstrap_workspace(user)
                 request.session['workspace_id'] = str(workspace.pk)
             login(request, user)
             return redirect('/app/')
@@ -120,7 +120,7 @@ def context(request, page):
     heartbeat = state.worker_heartbeat
     worker_online = bool(heartbeat and heartbeat > timezone.now() - timedelta(seconds=30))
     is_htmx=request.headers.get('HX-Request')=='true' and request.headers.get('HX-History-Restore-Request')!='true'
-    return {'w':w,'workspaces':Workspace.objects.filter(owner=request.user),'agents':agents,'all_agents':agents,'page':page,'pending_count':Approval.objects.filter(workspace=w,status='pending').count(),'state':state,'worker_online':worker_online,'now':timezone.localtime(),'offline':w.ai_mode == 'offline','hosted':os.environ.get('NABI_HTTPS')=='1','is_htmx':is_htmx,'base_template':'office/shell.html' if is_htmx else 'office/base.html'}
+    return {'w':w,'workspaces':Workspace.objects.filter(owner=request.user),'agents':agents,'all_agents':agents,'page':page,'pending_count':Approval.objects.filter(workspace=w,status='pending',expires_at__gt=timezone.now()).count(),'state':state,'worker_online':worker_online,'now':timezone.localtime(),'offline':w.ai_mode == 'offline','hosted':os.environ.get('NABI_HTTPS')=='1','is_htmx':is_htmx,'base_template':'office/shell.html' if is_htmx else 'office/base.html'}
 
 
 @login_required
@@ -128,7 +128,7 @@ def dashboard(request):
     c = context(request, 'today')
     w = c['w']
     tasks = Task.objects.filter(workspace=w).select_related('agent')
-    c.update(task_count=tasks.exclude(status__in=['completed','cancelled']).count(), deadline_count=tasks.filter(due_date__lte=timezone.localdate()+timedelta(days=3)).exclude(status__in=['completed','cancelled']).count(), completed_count=tasks.filter(status='completed').count(), priorities=tasks.exclude(status__in=['completed','cancelled']).order_by('due_date','-created_at')[:3], events=Event.objects.filter(workspace=w).order_by('-created_at')[:6], agents=c['agents'][:6])
+    c.update(task_count=tasks.exclude(status__in=['completed','cancelled']).count(), deadline_count=tasks.filter(due_date__lte=timezone.localdate()+timedelta(days=3)).exclude(status__in=['completed','cancelled']).count(), completed_count=tasks.filter(status='completed').count(), priorities=tasks.exclude(status__in=['completed','cancelled']).order_by('due_date','-created_at')[:3], events=Event.objects.filter(workspace=w).order_by('-created_at')[:6])
     return render(request, 'office/dashboard.html', c)
 
 
@@ -223,7 +223,8 @@ def task_action(request, pk):
 @login_required
 def approvals(request):
     c = context(request,'approvals')
-    items = list(Approval.objects.filter(workspace=c['w'],status='pending').select_related('delivery','delivery__task').order_by('-id')[:100])
+    items = list(Approval.objects.filter(workspace=c['w'],status='pending',expires_at__gt=timezone.now())
+                 .select_related('delivery__task__agent').order_by('-id')[:100])
     for item in items:
         item.current_hash = services.delivery_hash(item.delivery)
     c.update(items=items)
@@ -281,6 +282,8 @@ def work(request):
         tab = 'content'
     w = c['w']
     c.update(tab=tab,leads=Lead.objects.filter(workspace=w).order_by('-created_at')[:100],projects=Project.objects.filter(workspace=w).order_by('-created_at')[:100],contents=Delivery.objects.filter(workspace=w,kind='content').select_related('task').order_by('-created_at')[:100],routines=Routine.objects.filter(workspace=w).select_related('agent'),totals=services.finance_totals(w))
+    if tab == 'routines':
+        c['provider_ready'] = services.provider_ready(w)
     entries = list(FinancialEntry.objects.filter(workspace=w).prefetch_related('settlements').order_by('-created_at')[:100])
     for e in entries:
         e.paid_cents = sum(s.amount_cents for s in e.settlements.all())
@@ -363,10 +366,22 @@ def work_action(request):
             objective=request.POST.get('objective','').strip()[:5000]
             if not name or not objective: raise ValueError('Informe nome e objetivo da rotina.')
             Routine.objects.create(workspace=w,agent=agent,name=name,objective=objective,kind=kind,interval_minutes=interval,enabled=False)
+        elif action == 'team_activate':
+            if not request.POST.get('confirm'):
+                raise ValueError('Confirme a geração recorrente para ativar a equipe.')
+            services.activate_team(w)
+            record_event(w,'team.activated','Equipe recorrente ativada. Os rascunhos serão enviados à fila de revisão.')
+            messages.success(request,'Equipe ativada. As primeiras tarefas entram na fila em instantes.')
+            return redirect('/work/?tab=routines')
+        elif action == 'routine_run':
+            routine=get_object_or_404(Routine,pk=request.POST.get('id'),workspace=w)
+            services.run_routine_now(routine)
+            messages.success(request,'Execução incluída na fila. A entrega aparecerá em Aprovações.')
+            return redirect('/work/?tab=routines')
         elif action == 'routine_toggle':
             routine=get_object_or_404(Routine,pk=request.POST.get('id'),workspace=w)
             enabling=not routine.enabled
-            if enabling and routine.kind not in ['summary','finance','template'] and w.ai_mode=='offline': raise ValueError('Escolha e configure um provedor de IA antes de ativar esta rotina.')
+            if enabling and routine.kind not in services.LOCAL_KINDS and not services.provider_ready(w): raise ValueError('Conecte e autorize um provedor de IA antes de ativar esta rotina.')
             if enabling and not request.POST.get('confirm'): raise ValueError('Confirme a execução recorrente para ativar.')
             routine.enabled=enabling
             routine.next_run=timezone.now()+timedelta(minutes=routine.interval_minutes) if enabling else None
@@ -386,6 +401,8 @@ def settings_view(request):
     c['budget']=c['w'].policy.get('budget',{})
     c['data_dir']=str(settings.DATA_DIR)
     c['usage']=Run.objects.filter(task__workspace=c['w']).order_by('-started_at')[:20]
+    c['plan']=services.plan_connection(c['w'])
+    c['provider_ready']=services.provider_ready(c['w'])
     return render(request,'office/settings.html',c)
 
 
@@ -429,12 +446,24 @@ def settings_action(request):
             agent.save()
         elif action=='provider':
             mode=request.POST.get('ai_mode','offline')
-            if mode not in ['offline','openai','claude']: raise ValueError('O login ChatGPT ainda depende de homologação e não pode ser ativado.')
-            model=request.POST.get('ai_model','').strip()[:120]
-            if mode!='offline' and not model: raise ValueError('Informe o ID do modelo validado na sua conta.')
+            if mode not in ['offline','chatgpt','openai','claude']: raise ValueError('Escolha uma modalidade válida.')
+            model=request.POST.get('ai_model','').strip()[:160]
+            if mode=='chatgpt':
+                if not services.plan_connection(w)['connected']:
+                    raise ValueError('A conta ChatGPT ainda precisa ser autorizada pelo proprietário.')
+                if not request.POST.get('plan_confirmed'):
+                    raise ValueError('Autorize a geração com o plano ChatGPT para esta empresa.')
+                models=chatgpt_plan.list_models()
+                if not model:
+                    model=models[0]['slug'] if models else ''
+                if not any(item['slug']==model for item in models):
+                    raise ValueError('O modelo não está no catálogo desta conta ChatGPT.')
+                w.policy={**w.policy,'chatgpt_confirmed':True}
+            elif mode!='offline' and not model:
+                raise ValueError('Informe o ID do modelo validado na sua conta.')
             w.ai_mode=mode
             w.ai_model=model
-            if mode!='offline':
+            if mode in ('openai','claude'):
                 if not request.POST.get('confirmed'): raise ValueError('Confirme a política antes de selecionar um provedor.')
                 budget={key:request.POST.get(key,'') for key in ['expires_at','limit_usd','input_per_million','output_per_million']}
                 for key in ['limit_usd','input_per_million','output_per_million']:
@@ -450,7 +479,7 @@ def settings_action(request):
             raise ValueError('Ação desconhecida.')
         record_event(w,'settings.updated','Configuração atualizada pelo proprietário.')
         messages.success(request,'Configuração salva.')
-    except (ValueError,InvalidOperation,ValidationError) as exc:
+    except (ValueError,InvalidOperation,ValidationError,chatgpt_plan.PlanError) as exc:
         messages.error(request,str(exc))
     return redirect('/settings/')
 

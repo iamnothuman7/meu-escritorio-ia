@@ -30,8 +30,8 @@ class BackupTests(SimpleTestCase):
                 INSERT INTO office_task VALUES (1, 'queued');
                 CREATE TABLE office_systemstate (id INTEGER PRIMARY KEY, paused INTEGER);
                 INSERT INTO office_systemstate VALUES (1, 0);
-                CREATE TABLE django_session (id INTEGER PRIMARY KEY);
-                INSERT INTO django_session VALUES (1);
+                CREATE TABLE django_session (session_key TEXT PRIMARY KEY, session_data TEXT);
+                INSERT INTO django_session VALUES ('active-browser-session-marker', 'signed-session-data-marker');
             """)
         self.archive = self.root / "backup.zip"
 
@@ -65,6 +65,16 @@ class BackupTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             restore_backup(tampered, target)
         self.assertFalse(target.exists())
+
+    def test_archive_removes_live_sessions_without_altering_source(self):
+        self.backup()
+        with zipfile.ZipFile(self.archive) as archive:
+            snapshot = archive.read("office.sqlite3")
+        self.assertNotIn(b"active-browser-session-marker", snapshot)
+        self.assertNotIn(b"signed-session-data-marker", snapshot)
+        with closing(sqlite3.connect(self.database)) as connection:
+            self.assertEqual(connection.execute("SELECT session_key FROM django_session").fetchone(),
+                             ("active-browser-session-marker",))
 
     def test_existing_data_is_never_overwritten(self):
         self.backup()

@@ -35,9 +35,9 @@ $ready = $false
 for ($attempt = 0; $attempt -lt 25; $attempt++) {
     try {
         $response = Invoke-RestMethod -Uri 'http://127.0.0.1:8787/health' -TimeoutSec 1
-        if ($response.status -eq 'ok' -and $response.product -eq 'Nabi Office' -and (Test-OwnedProcess $serverPid $serverScript)) { $ready = $true; break }
+        if ($response.status -eq 'ok' -and $response.product -eq 'Nabio Office' -and (Test-OwnedProcess $serverPid $serverScript)) { $ready = $true; break }
     } catch { Start-Sleep -Milliseconds 400 }
 }
 if (-not $ready) { throw "O servidor não respondeu. Consulte os logs em $logPath." }
 Start-Process 'http://127.0.0.1:8787'
-Write-Host 'Nabi Office aberto em http://127.0.0.1:8787. Para encerrar: scripts\stop.ps1.'
+Write-Host 'Nabio Office aberto em http://127.0.0.1:8787. Para encerrar: scripts\stop.ps1.'

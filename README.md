@@ -1,6 +1,6 @@
-# Nabi Office
+# Nabio Office
 
-Escritório local de agentes para organizar várias empresas com contextos separados. Construído com Django, SQLite, templates e personagens 2D leves. Não exige Docker, Redis, servidor contratado ou assinatura de plataforma.
+Escritório de agentes para organizar várias empresas com contextos separados. Construído com Django, SQLite e HTMX.
 
 Também preparado para o VPS do proprietário em **https://office.nabio.pro**, com HTTPS e serviços exclusivos. Consulte [implantação dedicada](docs/DEPLOY.md). A versão hospedada usa o disco do servidor e seu executor continua enquanto o VPS estiver ligado; a versão local depende do computador ligado.
 
@@ -38,11 +38,11 @@ O modo sem IA mantém organização e cálculos. Modelos locais de texto são id
 
 As contas de IA não vêm conectadas. Os adaptadores só podem ser considerados homologados após uma execução autorizada com a conta do usuário. Nenhuma chamada paga é necessária para instalar ou executar os testes.
 
-O fluxo oficial **Entrar com ChatGPT / uso do plano Pro** permanece pendente de implementação e homologação. Não se copiam cookies ou tokens de outro aplicativo. Não existe troca automática do plano para uma API cobrada.
+Para a instalação própria do proprietário, `python scripts/connect-chatgpt.py login` abre o consentimento oficial no navegador. No VPS, execute `python scripts/connect-chatgpt.py import --owner ID` como o usuário do serviço e envie o arquivo de sessão protegido pela entrada padrão do SSH. Preserve apenas a sessão ativa no VPS. Em **Configurações → Conexão de IA**, selecione **Plano ChatGPT** e autorize o espaço. A execução usa o catálogo da conta. O limite local é de 12 chamadas por dia somadas entre as empresas do proprietário. [Guia oficial de instalação em VM própria](https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms)
 
 Instagram, e-mail, Telegram, Google, Notion e publicação remota não estão conectados nesta versão. Conteúdo é preparado para revisão e publicação manual. Agentes de desenvolvimento produzem planos e código como entrega; não executam shell, alteram projetos ou implantam em produção.
 
-Rotinas iniciam desativadas. O computador e o executor precisam permanecer ligados para executá-las. Dados públicos, preços e fontes não são descobertos automaticamente sem um conector de pesquisa homologado.
+Em **Trabalho → Rotinas**, ative a equipe para agendar a primeira rodada de oito entregas. A rotina de marketing roda a cada seis horas e mantém até quatro rascunhos na fila. As demais rodam diariamente e aguardam a revisão anterior. O executor funciona enquanto o computador ou servidor da instalação estiver ligado.
 
 ## Verificar e manter
 

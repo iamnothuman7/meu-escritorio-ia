@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -7,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from office.models import Approval, Delivery, Event, FinancialEntry, Routine, RoutineOccurrence, Run, Settlement, SystemState, Task
-from office.services import approve_delivery, bootstrap_workspace, delivery_hash, finance_totals, process_one, queue_task, schedule_due
+from office.services import activate_team, approve_delivery, bootstrap_workspace, delivery_hash, finance_totals, process_one, queue_task, schedule_due
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
@@ -32,6 +33,43 @@ class EngineTests(TestCase):
         self.assertFalse(self.workspace.routine_set.filter(enabled=True).exists())
         self.assertEqual(self.workspace.task_set.count(), 0)
         self.assertEqual(finance_totals(self.workspace)["cash_cents"], 0)
+
+    def test_chatgpt_team_schedules_eight_and_waits_for_review(self):
+        self.workspace.ai_mode = "chatgpt"
+        self.workspace.ai_model = "modelo-da-conta"
+        self.workspace.policy = {"chatgpt_confirmed": True}
+        self.workspace.save()
+        with patch("office.chatgpt_plan.status", return_value={"connected": True, "owner_id": self.owner.pk}), patch(
+            "office.chatgpt_plan.generate", return_value={"body": "Título: Rascunho de teste\n\nEntrega.", "usage": {}},
+        ) as generate:
+            activate_team(self.workspace)
+            activate_team(self.workspace)
+            self.assertEqual(self.workspace.routine_set.filter(enabled=True).count(), 8)
+            self.assertEqual(schedule_due(), 8)
+            self.assertEqual(schedule_due(), 0)
+            for _ in range(8):
+                self.assertTrue(process_one())
+            self.assertEqual(generate.call_count, 8)
+            self.assertEqual(Approval.objects.filter(workspace=self.workspace, status="pending").count(), 8)
+            self.assertEqual(Delivery.objects.get(workspace=self.workspace, kind="content").title, "Rascunho de teste")
+            self.assertEqual(schedule_due(timezone.now() + timedelta(days=1)), 1)
+            self.assertFalse(self.other.task_set.exists())
+
+    def test_chatgpt_session_is_bound_to_its_owner(self):
+        self.workspace.ai_mode = "chatgpt"
+        self.workspace.ai_model = "modelo-da-conta"
+        self.workspace.policy = {"chatgpt_confirmed": True}
+        self.workspace.save()
+        task = queue_task(self.task())
+        with patch("office.chatgpt_plan.status", return_value={"connected": True, "owner_id": self.owner.pk + 1}), patch(
+            "office.chatgpt_plan.generate",
+        ) as generate:
+            with self.assertRaises(ValidationError):
+                activate_team(self.workspace)
+            process_one()
+            generate.assert_not_called()
+        task.refresh_from_db()
+        self.assertEqual(task.status, "blocked")
 
     def test_cross_workspace_agent_rejected(self):
         with self.assertRaises(ValidationError):

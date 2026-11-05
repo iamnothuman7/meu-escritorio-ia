@@ -17,7 +17,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar arquivos da interface.' }
     $dependencyHash = (Get-FileHash -LiteralPath (Join-Path $projectPath 'requirements.txt') -Algorithm SHA256).Hash
     Set-Content -LiteralPath (Join-Path $projectPath '.venv\nabi-installed.txt') -Value $dependencyHash -Encoding ascii
-    Write-Host 'Nabi Office instalado. Execute scripts\start.ps1 para abrir.'
+    Write-Host 'Nabio Office instalado. Execute scripts\start.ps1 para abrir.'
 } finally {
     Pop-Location
 }

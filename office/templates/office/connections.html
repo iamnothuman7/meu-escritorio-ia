@@ -1,0 +1,36 @@
+{% load office_tags %}
+<section class="panel panel-body settings-section" id="connections">
+  <p class="eyebrow">Geração dos agentes</p>
+  <h2>Conexão de IA</h2>
+  <p class="muted">Modalidade selecionada <strong>{{ w.ai_mode|label }}</strong> · {% if provider_ready %}Disponível para execução{% else %}Aguardando configuração{% endif %}</p>
+  <div class="notice">
+    {% icon 'shield' %}
+    <p>{% if plan.connected %}<strong>Conta ChatGPT autorizada.</strong> Você pode usar o catálogo do plano neste espaço.{% else %}<strong>ChatGPT aguardando autorização.</strong> O proprietário conecta a conta no navegador e transfere a sessão ao servidor por SSH.{% endif %} As entregas entram na fila de revisão.</p>
+  </div>
+  <form hx-sync="this:drop" method="post" action="/settings/save/">
+    {% csrf_token %}<input type="hidden" name="action" value="provider">
+    <div class="form-grid">
+      <div class="field"><label>Modalidade<select name="ai_mode">
+        <option value="offline" {% if w.ai_mode == 'offline' %}selected{% endif %}>Modo local</option>
+        <option value="chatgpt" {% if w.ai_mode == 'chatgpt' %}selected{% endif %} {% if not plan.connected and w.ai_mode != 'chatgpt' %}disabled{% endif %}>Plano ChatGPT</option>
+        <option value="openai" {% if w.ai_mode == 'openai' %}selected{% endif %}>OpenAI API</option>
+        <option value="claude" {% if w.ai_mode == 'claude' %}selected{% endif %}>Claude API</option>
+      </select></label></div>
+      <div class="field"><label>Modelo<input name="ai_model" value="{{ w.ai_model }}" maxlength="160" placeholder="Escolha automática no plano ChatGPT"></label></div>
+    </div>
+    {% if plan.connected %}<label class="checkbox"><input type="checkbox" name="plan_confirmed" {% if w.policy.chatgpt_confirmed %}checked{% endif %}>Autorizo o uso do meu plano e o envio do contexto necessário desta empresa ao ChatGPT.</label>
+    <p class="muted">O Nabio Office limita o plano a 12 chamadas por dia, somadas entre suas empresas.</p>{% endif %}
+    <details>
+      <summary>Limites para OpenAI API e Claude API</summary>
+      <p class="muted">A chave é configurada no servidor. Informe os preços do modelo e o valor máximo que você autoriza para esta empresa.</p>
+      <div class="form-grid">
+        <div class="field"><label>Teto autorizado (US$)<input type="number" step="0.01" min="0.01" name="limit_usd" value="{{ budget.limit_usd }}"></label></div>
+        <div class="field"><label>Válido até<input type="date" name="expires_at" value="{{ budget.expires_at|slice:':10' }}"></label></div>
+        <div class="field"><label>Preço de entrada por milhão (US$)<input type="number" step="0.0001" min="0" name="input_per_million" value="{{ budget.input_per_million }}"></label></div>
+        <div class="field"><label>Preço de saída por milhão (US$)<input type="number" step="0.0001" min="0" name="output_per_million" value="{{ budget.output_per_million }}"></label></div>
+      </div>
+      <label class="checkbox"><input type="checkbox" name="confirmed">Conferi os preços, os créditos e a recarga automática. Autorizo chamadas dentro deste teto.</label>
+    </details>
+    <div class="form-actions"><button class="btn primary small">Salvar conexão</button>{% if provider_ready %}<a class="btn secondary small" href="/work/?tab=routines">Abrir rotinas</a>{% endif %}</div>
+  </form>
+</section>

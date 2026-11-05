@@ -365,7 +365,7 @@ class OfficeWebTests(TestCase):
             with self.subTest(authenticated=client is self.client):
                 response = client.get('/')
                 self.assertEqual(response.status_code, 200)
-                self.assertContains(response, 'Nabi Office')
+                self.assertContains(response, 'Nabio Office')
                 self.assertContains(response, 'href="/app/"' if client is self.client else 'href="/login/"')
                 self.assertNotContains(response, '/setup/')
                 self.assertNotContains(response, 'Empresa A')

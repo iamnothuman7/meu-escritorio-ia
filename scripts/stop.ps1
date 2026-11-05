@@ -14,10 +14,10 @@ foreach ($entry in @(@{Name='server'; Script='serve.py'}, @{Name='worker'; Scrip
             throw "O PID de $($entry.Name) pertence a outro processo. Nenhum processo foi encerrado por esse registro."
         }
         if ($entry.Name -eq 'worker' -and $taskProcess.CommandLine -notmatch '\brunworker\b') {
-            throw 'O processo não é o executor do Nabi Office.'
+            throw 'O processo não é o executor do Nabio Office.'
         }
         Stop-Process -Id $taskProcessId
     }
     Remove-Item -LiteralPath $pidFile -Force
 }
-Write-Host 'Nabi Office encerrado. Tarefas interrompidas serão verificadas pelo executor na próxima inicialização.'
+Write-Host 'Nabio Office encerrado. Tarefas interrompidas serão verificadas pelo executor na próxima inicialização.'

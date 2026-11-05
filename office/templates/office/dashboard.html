@@ -1,7 +1,64 @@
-{% extends base_template|default:'office/base.html' %}{% load static office_tags %}{% block title %}Hoje{% endblock %}{% block content %}<div id="dashboard-live"><span class="live-poller" data-live-refresh aria-hidden="true" hx-get="/app/" hx-trigger="every 15s" hx-target="#dashboard-live" hx-select="#dashboard-live" hx-swap="outerHTML" hx-select-oob="#approval-count"></span>
-<div class="page-heading"><div><p class="eyebrow">SEU CENTRO DE OPERAÇÕES</p><h1 class="page-title">Olá, {{ request.user.first_name|default:request.user.username }}<span class="accent">.</span></h1><p class="subtitle">Ideias ganham direção. Sua equipe cuida dos próximos passos.</p></div><form hx-sync="this:drop" method="post" action="/office/pause/">{% csrf_token %}<button class="btn ghost small">{% if state.paused %}{% icon 'play' 15 %}Retomar{% else %}{% icon 'pause' 15 %}Pausar escritório{% endif %}</button></form></div>
-<section class="hero"><div class="hero-copy"><div class="hero-tags"><span class="pill">{% icon 'bolt' 14 %} SEU ESCRITÓRIO, EXPANDIDO</span></div><h2>Você pensa grande.<br>A gente organiza o caminho.</h2><p>Uma equipe para criar, planejar e tirar suas ideias do papel. Tudo no contexto da sua empresa, com você no comando.</p><button class="btn primary" data-open="new-task">Vamos começar uma tarefa {% icon 'arrow' 17 %}</button><span class="hero-note">{{ w.name }} · {% if worker_online %}Executor online{% else %}Executor aguardando inicialização{% endif %}</span></div><div class="hero-art"><img src="{% static 'office/office-scene.svg' %}" alt="Seu escritório virtual ilustrado em pixel art" width="1000" height="360"><span class="scene-caption">UM ESPAÇO PARA SUAS IDEIAS</span></div></section>
-<section class="stats" aria-label="Visão de hoje"><div class="stat"><span class="stat-icon">{% icon 'work' %}</span><span class="stat-value">{{ task_count }}</span><span class="stat-label">Tarefas em aberto</span></div><a href="/approvals/" class="stat"><span class="stat-icon amber">{% icon 'approval' %}</span><span class="stat-value">{{ pending_count }}</span><span class="stat-label">Esperando sua aprovação</span></a><div class="stat"><span class="stat-icon cyan">{% icon 'clock' %}</span><span class="stat-value">{{ deadline_count }}</span><span class="stat-label">Prazos nos próximos 3 dias</span></div><a href="/settings/#connections" class="stat"><span class="stat-icon green">{% icon 'shield' %}</span><span class="stat-value stat-text">{% if offline %}Sem IA{% else %}Teto local{% endif %}</span><span class="stat-label">{% if offline %}Recursos locais disponíveis{% else %}Consulte política e reservas{% endif %}</span></a></section>
-<div class="dashboard-columns"><section class="panel"><div class="section-heading"><h2 class="section-title">Minhas prioridades</h2><a href="/tasks/" class="text-link">Ver tarefas {% icon 'arrow' 15 %}</a></div><div class="priorities">{% for task in priorities %}<a class="priority-row" href="/tasks/{{ task.pk }}/"><span class="priority-number">0{{ forloop.counter }}</span><div class="priority-copy"><strong>{{ task.title }}</strong><small>{{ task.agent.name }} · {% if task.due_date %}Prazo {{ task.due_date|date:'d/m' }}{% else %}Tarefa em aberto{% endif %}</small></div><span class="status status-{{ task.status }}">{{ task.status|label }}</span></a>{% empty %}<div class="empty compact"><span class="empty-icon">{% icon 'check' 26 %}</span><h3>Espaço livre para o próximo passo.</h3><p>Crie uma tarefa e ela aparecerá aqui. Seus dados começam do zero.</p><button class="btn secondary small" data-open="new-task">{% icon 'plus' 15 %} Minha primeira tarefa</button></div>{% endfor %}</div></section><section class="panel"><div class="section-heading"><h2 class="section-title">Aconteceu no escritório</h2><span class="pill subtle">HISTÓRICO REAL</span></div><div class="timeline">{% for event in events %}<div class="event"><span class="event-dot"></span><div class="event-copy"><p>{{ event.message }}</p><time class="event-time">{{ event.created_at|date:'d/m · H:i' }}</time></div></div>{% empty %}<div class="empty compact"><span class="empty-icon">{% icon 'clock' 24 %}</span><p>O histórico começa com suas primeiras ações.</p></div>{% endfor %}</div></section></div>
-<div class="section-heading"><div><p class="eyebrow">PESSOAS DIGITAIS. TRABALHO DE VERDADE.</p><h2 class="section-title">Conheça sua equipe</h2></div><a href="/team/" class="text-link">Explorar equipe {% icon 'arrow' 16 %}</a></div><div class="team-grid">{% for agent in agents %}{% include 'office/agent_card.html' %}{% endfor %}</div>
-</div>{% endblock %}
+{% extends base_template|default:'office/base.html' %}
+{% load office_tags %}
+{% block title %}Hoje{% endblock %}
+{% block content %}
+<div id="dashboard-live">
+  <span class="live-poller" data-live-refresh aria-hidden="true" hx-get="/app/" hx-trigger="every 15s" hx-target="#dashboard-live" hx-select="#dashboard-live" hx-swap="outerHTML" hx-select-oob="#approval-count"></span>
+  <div class="page-heading">
+    <div><p class="eyebrow">VISÃO GERAL</p><h1 class="page-title">Olá, {{ request.user.first_name|default:request.user.username }}.</h1><p class="subtitle">Prioridades, prazos e entregas do seu escritório.</p></div>
+    <form hx-sync="this:drop" method="post" action="/office/pause/">
+      {% csrf_token %}<button class="btn ghost small">{% if state.paused %}{% icon 'play' 15 %}Retomar{% else %}{% icon 'pause' 15 %}Pausar escritório{% endif %}</button>
+    </form>
+  </div>
+
+  <section class="workspace-overview" aria-labelledby="workspace-overview-title">
+    <span class="overview-mark" aria-hidden="true">{% icon 'grid' 28 %}</span>
+    <div>
+      <p class="eyebrow">EMPRESA ATIVA</p>
+      <h2 id="workspace-overview-title">{{ w.name }}</h2>
+      <p>Crie uma demanda e escolha quem vai cuidar da entrega.</p>
+    </div>
+    <div class="overview-meta">
+      <span><span class="status-dot {% if not worker_online %}off{% endif %}"></span> {% if worker_online %}Executor online{% else %}Executor indisponível{% endif %}</span>
+      <button type="button" class="btn primary" data-open="new-task">Nova tarefa {% icon 'arrow' 17 %}</button>
+    </div>
+  </section>
+
+  <section class="stats" aria-label="Visão de hoje">
+    <div class="stat"><span class="stat-icon">{% icon 'work' %}</span><span class="stat-value">{{ task_count }}</span><span class="stat-label">Tarefas em aberto</span></div>
+    <a href="/approvals/" class="stat"><span class="stat-icon amber">{% icon 'approval' %}</span><span class="stat-value">{{ pending_count }}</span><span class="stat-label">Aprovações pendentes</span></a>
+    <div class="stat"><span class="stat-icon cyan">{% icon 'clock' %}</span><span class="stat-value">{{ deadline_count }}</span><span class="stat-label">Prazos nos próximos 3 dias</span></div>
+    <a href="/settings/#connections" class="stat"><span class="stat-icon green">{% icon 'shield' %}</span><span class="stat-value stat-text">{% if offline %}Sem IA{% else %}Teto local{% endif %}</span><span class="stat-label">{% if offline %}Recursos locais disponíveis{% else %}Consulte política e reservas{% endif %}</span></a>
+  </section>
+
+  <div class="dashboard-columns">
+    <section class="panel">
+      <div class="section-heading"><h2 class="section-title">Minhas prioridades</h2><a href="/tasks/" class="text-link">Ver tarefas {% icon 'arrow' 15 %}</a></div>
+      <div class="priorities">
+        {% for task in priorities %}
+        <a class="priority-row" href="/tasks/{{ task.pk }}/">
+          <span class="priority-number">{{ forloop.counter|stringformat:"02d" }}</span>
+          <div class="priority-copy"><strong>{{ task.title }}</strong><small>{{ task.agent.name|default:'Sem agente' }} · {% if task.due_date %}Prazo {{ task.due_date|date:'d/m' }}{% else %}Tarefa em aberto{% endif %}</small></div>
+          <span class="status status-{{ task.status }}">{{ task.status|label }}</span>
+        </a>
+        {% empty %}
+        <div class="empty compact"><span class="empty-icon">{% icon 'check' 26 %}</span><h3>Nenhuma prioridade em aberto</h3><p>As tarefas em andamento aparecerão aqui.</p><button type="button" class="btn secondary small" data-open="new-task">{% icon 'plus' 15 %} Criar tarefa</button></div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="panel">
+      <div class="section-heading"><h2 class="section-title">Atividade recente</h2></div>
+      <div class="timeline">
+        {% for event in events %}
+        <div class="event"><span class="event-dot"></span><div class="event-copy"><p>{{ event.message }}</p><time class="event-time" datetime="{{ event.created_at|date:'c' }}">{{ event.created_at|date:'d/m · H:i' }}</time></div></div>
+        {% empty %}
+        <div class="empty compact"><span class="empty-icon">{% icon 'clock' 24 %}</span><p>As ações do escritório aparecerão neste histórico.</p></div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <div class="section-heading"><h2 class="section-title">Sua equipe</h2><a href="/team/" class="text-link">Ver equipe {% icon 'arrow' 16 %}</a></div>
+  <div class="team-grid">{% for agent in agents %}{% include 'office/agent_card.html' %}{% endfor %}</div>
+</div>
+{% endblock %}

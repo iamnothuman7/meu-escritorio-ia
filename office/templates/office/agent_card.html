@@ -1,1 +1,18 @@
-{% load static office_tags %}<article class="agent-card {% if not agent.enabled %}disabled{% endif %}" style="--agent-color:{{ agent.color }}"><div class="agent-head"><svg class="avatar" viewBox="0 0 64 64" aria-label="Personagem {{ agent.name }}"><use href="{% static 'office/characters.svg' %}#avatar-{{ agent.avatar }}"></use></svg><div class="agent-info"><h3 class="agent-name">{{ agent.name }}</h3><p class="agent-role">{{ agent.role }}</p></div><span class="agent-status"><span class="status-dot {% if not agent.current_task %}off{% endif %}"></span>{% if not agent.enabled %}Desativado{% elif agent.current_task %}{{ agent.current_task.status|label }}{% else %}Disponível{% endif %}</span></div><div class="agent-task">{% if agent.current_task %}<a href="/tasks/{{ agent.current_task.pk }}/">{{ agent.current_task.title }}</a>{% else %}<span class="muted">Pronto para a próxima ideia.</span>{% endif %}</div><div class="agent-footer"><span>{% if agent.last_delivery %}Última entrega: {{ agent.last_delivery.created_at|date:'d/m H:i' }}{% else %}Nenhuma entrega ainda{% endif %}</span>{% if agent.enabled %}<button class="icon-btn" data-open="new-task" data-agent="{{ agent.pk }}" title="Criar tarefa para {{ agent.name }}">{% icon 'arrow' 18 %}</button>{% endif %}</div></article>
+{% load office_tags %}
+<article class="agent-card{% if not agent.enabled %} disabled{% endif %}" style="--agent-color:{{ agent.color }}">
+  <div class="agent-head">
+    <span class="agent-initial" aria-hidden="true">{{ agent.name|first|upper }}</span>
+    <div class="agent-info"><h3 class="agent-name">{{ agent.name }}</h3><p class="agent-role">{{ agent.role }}</p></div>
+    <span class="agent-status">
+      <span class="status-dot {% if not agent.current_task %}off{% endif %}"></span>
+      {% if not agent.enabled %}Desativado{% elif agent.current_task %}{{ agent.current_task.status|label }}{% else %}Disponível{% endif %}
+    </span>
+  </div>
+  <div class="agent-task">
+    {% if agent.current_task %}<a href="/tasks/{{ agent.current_task.pk }}/">{{ agent.current_task.title }}</a>{% else %}<span class="muted">Sem tarefa em andamento.</span>{% endif %}
+  </div>
+  <div class="agent-footer">
+    <span>{% if agent.last_delivery %}Última entrega <time datetime="{{ agent.last_delivery.created_at|date:'c' }}">{{ agent.last_delivery.created_at|date:'d/m H:i' }}</time>{% else %}Nenhuma entrega registrada{% endif %}</span>
+    {% if agent.enabled %}<button type="button" class="icon-btn" data-open="new-task" data-agent="{{ agent.pk }}" aria-label="Criar tarefa para {{ agent.name }}" title="Criar tarefa para {{ agent.name }}">{% icon 'arrow' 18 %}</button>{% endif %}
+  </div>
+</article>

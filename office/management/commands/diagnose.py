@@ -15,7 +15,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         report = {
-            "application": "Nabi Office",
+            "application": "Nabio Office",
             "python": platform.python_version(),
             "django": django.get_version(),
             "sqlite": sqlite3.sqlite_version,

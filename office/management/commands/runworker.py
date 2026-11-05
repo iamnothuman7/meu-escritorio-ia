@@ -76,7 +76,7 @@ class Command(BaseCommand):
                     error="Executor anterior interrompido. Revise o resultado e o consumo antes de solicitar nova execução.")
                 Event.objects.create(workspace=task.workspace, task=task, kind="run.interrupted",
                     message="Execução anterior interrompida; revisão necessária antes de repetir.")
-            self.stdout.write(self.style.SUCCESS("Executor Nabi Office ativo. Ctrl+C encerra após a etapa corrente."))
+            self.stdout.write(self.style.SUCCESS("Executor Nabio Office ativo. Ctrl+C encerra após a etapa corrente."))
             try:
                 while not stopping:
                     close_old_connections()

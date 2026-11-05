@@ -1,0 +1,42 @@
+{% load office_tags %}
+<div class="section-heading">
+  <div><h2 class="section-title">Rotinas da equipe</h2><p class="muted">Programe entregas para esta empresa e acompanhe o que chega à sua fila.</p></div>
+  <button class="btn secondary small" data-open="new-routine">{% icon 'plus' 16 %}Nova rotina</button>
+</div>
+<section class="panel panel-body">
+  <p class="eyebrow">8 agentes</p>
+  <h3>Ativar a equipe</h3>
+  <p class="muted">Atlas, Radar, Elo, Luma, Cora, Nexo, Pixel e Byte produzem os primeiros rascunhos assim que o executor recebe as tarefas. A rotina de conteúdo roda até quatro vezes por dia e guarda até quatro entregas em revisão. As demais guardam uma entrega por rotina.</p>
+  {% if provider_ready %}
+    <form hx-sync="this:drop" method="post" action="/work/action/">
+      {% csrf_token %}<input type="hidden" name="action" value="team_activate"><input type="hidden" name="tab" value="routines">
+      <label class="checkbox"><input type="checkbox" name="confirm" required>Autorizo a geração recorrente para esta empresa.</label>
+      <button class="btn primary small">{% icon 'play' 16 %}Ativar equipe</button>
+    </form>
+  {% else %}
+    <a class="btn primary small" href="/settings/#connections">Conectar IA {% icon 'arrow' 16 %}</a>
+  {% endif %}
+</section>
+<div class="content-grid">
+  {% for routine in routines %}
+    <article class="panel panel-body routine-card">
+      <div class="section-heading"><span class="pill">{{ routine.agent.name|default:'Sem agente' }}</span><span class="status {% if routine.enabled %}status-running{% endif %}">{% if routine.enabled %}Ativa{% else %}Desativada{% endif %}</span></div>
+      <h3>{{ routine.name }}</h3><p class="muted">{{ routine.objective }}</p>
+      <p>A cada {{ routine.interval_minutes }} minutos</p>
+      {% if routine.next_run %}<p class="muted">Próximo horário {{ routine.next_run|date:'d/m H:i' }} · Fortaleza</p>{% endif %}
+      <div class="delivery-tools">
+        <form hx-sync="this:drop" action="/work/action/" method="post">
+          {% csrf_token %}<input type="hidden" name="tab" value="routines"><input type="hidden" name="id" value="{{ routine.pk }}">
+          {% if not routine.enabled %}<label class="checkbox"><input type="checkbox" name="confirm" required>Autorizo a execução recorrente.</label>{% endif %}
+          <button name="action" value="routine_toggle" class="btn secondary small">{% if routine.enabled %}Pausar{% else %}Ativar{% endif %}</button>
+        </form>
+        {% if routine.agent.enabled %}
+          <form hx-sync="this:drop" action="/work/action/" method="post">
+            {% csrf_token %}<input type="hidden" name="tab" value="routines"><input type="hidden" name="id" value="{{ routine.pk }}">
+            <button name="action" value="routine_run" class="btn secondary small">Executar agora</button>
+          </form>
+        {% endif %}
+      </div>
+    </article>
+  {% endfor %}
+</div>

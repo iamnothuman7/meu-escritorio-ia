@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0B1020">
-  <meta name="description" content="Entre no NABIO Office AI e encontre sua equipe, suas empresas e suas próximas ideias.">
-  <title>{% if setup %}Prepare seu escritório{% else %}Seu próximo passo começa aqui{% endif %} · NABIO Office AI</title>
+  <meta name="theme-color" content="#F8F7F4">
+  <meta name="description" content="Acesse sua equipe, suas tarefas e suas aprovações no Nabio Office.">
+  <title>{% if setup %}Configure seu escritório{% else %}Entrar{% endif %} · Nabio Office</title>
   <link rel="preload" href="{% static 'office/fonts/Inter-latin.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'office/auth.css' %}">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -13,38 +13,35 @@
   <link rel="icon" href="{% static 'office/brand/icon-32.png' %}" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="{% static 'office/brand/icon-192.png' %}">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <script defer src="{% static 'office/auth.js' %}"></script>
   <script defer src="{% static 'office/pwa.js' %}"></script>
 </head>
 <body class="auth-page{% if setup %} is-setup{% endif %}">
   <a class="skip-link" href="#auth-form">Pular para o acesso</a>
-  <div class="auth-atmosphere" aria-hidden="true"><span class="aurora aurora-violet"></span><span class="aurora aurora-cyan"></span><span class="atmosphere-grid"></span><span class="ambient-star star-one">✦</span><span class="ambient-star star-two">✧</span><span class="ambient-star star-three">✦</span></div>
   <main class="auth-layout">
     <section class="auth-story" aria-labelledby="story-title">
-      <a class="auth-brand" href="/" aria-label="NABIO Office AI, voltar ao início"><img src="{% static 'office/brand/logo-horizontal.svg' %}" width="246" height="76" alt="NABIO Office AI"></a>
+      <a class="auth-brand" href="/" aria-label="Nabio Office, voltar ao início"><span class="auth-brand-mark" aria-hidden="true"><img src="{% static 'office/brand/icon.svg' %}" width="24" height="24" alt=""></span><span>Nabio Office</span></a>
       <div class="story-main">
-        <p class="eyebrow"><span></span> UM ESPAÇO PARA AS SUAS POSSIBILIDADES</p>
-        <h1 id="story-title">Sua próxima<br>grande ideia<br><span>tem companhia.</span></h1>
-        <p class="story-description">Sua visão encontra uma equipe.<br>E o trabalho encontra um novo caminho.</p>
+        <p class="eyebrow"><span></span> SEU ESCRITÓRIO DIGITAL</p>
+        <h2 id="story-title">Um lugar para<br>o trabalho <em>acontecer.</em></h2>
+        <p class="story-description">Organize as tarefas de cada empresa, acompanhe sua equipe e revise as entregas em um só lugar.</p>
         <div class="office-illustration" aria-hidden="true">
-          <span class="office-orbit orbit-one"></span><span class="office-orbit orbit-two"></span>
-          <div class="illustration-heading"><span class="illustration-line"></span> SEU ESCRITÓRIO, REIMAGINADO <span>✦</span></div>
-          <img class="office-scene" src="{% static 'office/office-scene.svg' %}" width="1000" height="360" alt="">
-          <div class="illustration-footer"><span>Ideias</span><i></i><span>Equipe</span><i></i><span>Possibilidades</span></div>
+          <div class="illustration-orbit"></div>
+          <div class="illustration-head"><span>Do pedido à decisão</span><span>✦</span></div>
+          <div class="illustration-step"><span class="step-icon">{% icon 'work' 17 %}</span><span><small>01 / PLANEJAMENTO</small><strong>Organize a demanda</strong></span></div>
+          <div class="illustration-step"><span class="step-icon">{% icon 'team' 17 %}</span><span><small>02 / EXECUÇÃO</small><strong>Acompanhe a equipe</strong></span></div>
+          <div class="illustration-step"><span class="step-icon">{% icon 'approval' 17 %}</span><span><small>03 / REVISÃO</small><strong>Decida o que segue</strong></span></div>
         </div>
       </div>
-      <p class="story-footer">Feito para acompanhar o seu jeito de criar.<span>Ilustração da experiência</span></p>
     </section>
     <section class="auth-access" aria-labelledby="access-title">
       <a class="back-link" href="/">{% icon 'arrow' 16 %}<span>Voltar ao início</span></a>
       <div class="access-card">
-        <div class="card-topline"><span></span><span></span><span></span><span class="card-topline-label">NABIO OFFICE AI</span><span class="topline-star">✦</span></div>
         <div class="access-intro">
-          <div class="access-symbol" aria-hidden="true"><img src="{% static 'office/brand/icon.svg' %}" width="40" height="40" alt=""></div>
-          <p class="eyebrow">{% if setup %}O PRIMEIRO PASSO É SEU{% else %}BEM-VINDO AO SEU ESPAÇO{% endif %}</p>
-          <h2 id="access-title">{% if setup %}Dê vida ao seu<br>novo escritório.{% else %}Bom ter você<br><span>por aqui.</span>{% endif %}</h2>
-          <p class="access-description">{% if setup %}Crie seu acesso. Depois, deixe a empresa e a equipe com a sua cara.{% else %}Entre, encontre sua equipe e dê direção<br class="desktop-break"> ao que vem a seguir.{% endif %}</p>
+          <p class="eyebrow">{% if setup %}CONFIGURAÇÃO INICIAL{% else %}ACESSO AO ESCRITÓRIO{% endif %}</p>
+          <h1 id="access-title">{% if setup %}Configure seu escritório{% else %}Bom ter você de volta.{% endif %}</h1>
+          <p class="access-description">{% if setup %}Crie seu usuário para começar a configurar suas empresas e sua equipe.{% else %}Entre para acompanhar suas tarefas, sua equipe e as próximas aprovações.{% endif %}</p>
         </div>
         {% if error or form.errors %}<div class="auth-error" role="alert" tabindex="-1"><span class="error-symbol" aria-hidden="true">!</span><p>{{ error|default:'Não foi possível entrar. Confira seu usuário e sua senha e tente novamente.' }}</p></div>{% endif %}
         <form id="auth-form" class="access-form" method="post" data-auth-form>
@@ -68,9 +65,7 @@
           <button class="submit-button" type="submit" data-auth-submit><span data-submit-label>{% if setup %}Criar meu escritório{% else %}Entrar no meu escritório{% endif %}</span><span class="button-arrow">{% icon 'arrow' 19 %}</span><span class="button-spinner" aria-hidden="true" hidden></span></button>
           <p class="submit-status visually-hidden" role="status" aria-live="polite" data-auth-status></p>
         </form>
-        <div class="access-bottom"><span class="bottom-line"></span><span>Seu escritório. Suas possibilidades.</span><span class="bottom-line"></span></div>
       </div>
-      <p class="access-footer">NABIO Office <span>AI</span><span class="footer-dot">·</span> Inteligência com propósito.</p>
     </section>
   </main>
 </body>
