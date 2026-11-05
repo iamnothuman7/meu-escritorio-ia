@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.utils import timezone
 from PIL import Image
 
@@ -93,6 +93,27 @@ class InstagramPublicationTests(TestCase):
         with self.assertRaises(ValidationError):
             instagram.approve_and_queue(self.delivery, self.approval.payload_hash, self.account_id)
         self.assertFalse(InstagramPublication.objects.exists())
+
+    def test_publication_form_requires_the_workspace_owner_and_csrf_token(self):
+        self.connect()
+        client = Client(enforce_csrf_checks=True)
+        stranger = get_user_model().objects.create_user("other-instagram-owner")
+        client.force_login(stranger)
+        self.assertNotContains(client.get("/approvals/"), "Aprovar e publicar")
+        path = f"/approvals/{self.approval.pk}/decision/"
+        payload = {"decision": "publish", "hash": self.approval.payload_hash,
+                   "instagram_account_id": self.account_id}
+        self.assertEqual(client.post(path, payload, HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value).status_code, 404)
+
+        client.force_login(self.workspace.owner)
+        page = client.get("/approvals/")
+        self.assertContains(page, "Aprovar e publicar")
+        self.assertContains(page, "Um dia para criar.\nVenha conversar.")
+        self.assertEqual(client.post(path, payload).status_code, 403)
+        self.assertFalse(InstagramPublication.objects.exists())
+        response = client.post(path, payload, HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value)
+        self.assertRedirects(response, "/approvals/", fetch_redirect_response=False)
+        self.assertEqual(InstagramPublication.objects.get().approval_id, self.approval.pk)
 
     def test_worker_sends_the_approved_caption_and_signed_image_once(self):
         job = self.queue()
